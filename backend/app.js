@@ -1,32 +1,37 @@
 import express from "express";
 import { config } from "dotenv";
 import cookieParser from "cookie-parser";
-import cors from "cors"
+import cors from "cors";
 import { errorMiddleware } from "./middlewares/error.middleware.js";
-import userRouter from "./routes/user.route.js"
-import adminRouter from "./routes/admin.route.js"
+import userRouter from "./routes/user.route.js";
+import adminRouter from "./routes/admin.route.js";
+import postRoutes from "./routes/post.routes.js";
+import communityRoutes from "./routes/community.route.js";
+
 const app = express();
 
-config({ path: "./.env" })
+config({ path: "./.env" });
 
 // *===================================
 // *Neccessary-Middlewares
 app.use(express.json({ limit: "256kb" }));
-app.use(express.urlencoded({ extended: true }))
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // ================ CORS Configuration ===================
 const allowedOrigins = process.env.CORS_ORIGIN.split(",");
-app.use(cors({
+app.use(
+  cors({
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
     },
-    credentials: true
-}));
+    credentials: true,
+  })
+);
 
 // ================= Health Check Route ===================
 app.get("/", (req, res) => {
@@ -40,10 +45,12 @@ app.get("/", (req, res) => {
 });
 
 // ================= Routes ===================
-app.use("/api/v1/users", userRouter)
-app.use("/api/v1/admin", adminRouter)
+app.use("/api/v1/users", userRouter);
+app.use("/api/v1/admin", adminRouter);
+app.use("/api/v1/posts", postRoutes);
+app.use("/api/v1/communities", communityRoutes);
 
-app.use(errorMiddleware)
+app.use(errorMiddleware);
 // *End-Of-Neccessary-Middlewares
 // *===================================
 
