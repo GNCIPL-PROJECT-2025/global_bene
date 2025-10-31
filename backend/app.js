@@ -5,6 +5,7 @@ import cors from "cors"
 import { errorMiddleware } from "./middlewares/error.middleware.js";
 import userRouter from "./routes/user.route.js"
 import adminRouter from "./routes/admin.route.js"
+import goggleRouter from "./routes/googleauth.routes.js"
 const app = express();
 
 config({ path: "./.env" })
@@ -42,6 +43,7 @@ app.get("/", (req, res) => {
 // ================= Routes ===================
 app.use("/api/v1/users", userRouter)
 app.use("/api/v1/admin", adminRouter)
+app.use("/api/v1/auth", goggleRouter)
 
 app.use(errorMiddleware)
 // *End-Of-Neccessary-Middlewares

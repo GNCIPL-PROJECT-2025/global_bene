@@ -13,7 +13,8 @@ import {
     getLoggedInUserInfo,
     updateUserProfile,
     deleteUser,
-    updateUserAvatar
+    updateUserAvatar,
+    googleAuth
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
@@ -25,6 +26,8 @@ const router = express.Router()
 // *Register and login routes
 router.route("/register").post(registerUser)
 router.route("/login").post(loginUser)
+// POST /api/v1/auth/google
+router.post('/google', googleAuth);
 
 // *OTP routes
 router.route("/send-otp").get(verifyJWT, sendOtpToUser)

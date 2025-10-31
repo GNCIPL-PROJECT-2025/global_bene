@@ -4,13 +4,14 @@ import ErrorHandler from "../middlewares/error.middleware.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs"
 import crypto from "crypto"
-
 import { User } from "../models/user.model.js";
 import { destroyOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.utils.js";
 import mongoose from "mongoose";
 import { sendEmail } from "../utils/mail.utils.js";
 import { cookieToken } from "../utils/cookie.utils.js";
 import { cloudinaryAvatarRefer } from "../utils/constants.utils.js";
+import { OAuth2Client } from 'google-auth-library';
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // *==================================Email Templates & Link==============================================
 function generateEmailLinkTemplate(Token) {
@@ -601,6 +602,76 @@ const deleteUser = asyncHandler(async (req, res, next) => {
     }
 });
 
+//goggle Oauth 
+
+// ✅ @desc Google OAuth Signup/Login
+// ✅ @route POST /api/v1/auth/google
+// ✅ @access Public
+
+// Helper to generate JWT
+const generateToken = (user) => {
+  return jwt.sign(
+    {
+      id: user._id,
+      fullName: user.fullName,
+      role: user.role,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
+  );
+};
+const googleAuth = asyncHandler(async (req, res) => {
+  const { token } = req.body;
+  if (!token) {
+    const err = new Error('Google ID token is required');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  // Verify Google token
+  const ticket = await client.verifyIdToken({
+    idToken: token,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+
+  const payload = ticket.getPayload();
+  const { email, name, picture, sub } = payload;
+
+  if (!email) {
+    const err = new Error('Invalid Google token');
+    err.statusCode = 401;
+    throw err;
+  }
+
+  // Check if user already exists
+  let user = await User.findOne({ email });
+
+  if (!user) {
+    // Create new user
+    user = await User.create({
+      username: name.replace(/\s+/g, '').toLowerCase(),
+      email,
+      passwordHash: '', // no password for Google users
+      avatarUrl: picture,
+      roles: ['user'],
+      settings: { provider: 'google', googleId: sub },
+      isVerified: true,
+    });
+  }
+
+  // Generate JWT token
+  const accessToken = generateToken(user);
+
+  res.status(200).json({
+    success: true,
+    message: 'Google authentication successful',
+    token: accessToken,
+    user: user.safeUser(),
+  });
+});
+
+
+
 // *Exports
 export {
     refreshAccessToken,
@@ -615,5 +686,6 @@ export {
     changeCurrentPassword,
     updateUserProfile,
     updateUserAvatar,
+    googleAuth,
     deleteUser,
 }
