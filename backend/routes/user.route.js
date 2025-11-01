@@ -1,5 +1,6 @@
 import express from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import passport from '../config/passport.js';
 
 import {
     registerUser,
@@ -13,7 +14,9 @@ import {
     getLoggedInUserInfo,
     updateUserProfile,
     deleteUser,
-    updateUserAvatar
+    updateUserAvatar,
+    googleAuthCallback,
+    refreshAccessToken
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
@@ -21,6 +24,10 @@ const router = express.Router()
 
 // *==========================
 // *User Routes
+
+// *Google OAuth Routes
+router.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/login' }), googleAuthCallback);
 
 // *Register and login routes
 router.route("/register").post(registerUser)
@@ -41,6 +48,7 @@ router.route("/update-profile").put(verifyJWT, updateUserProfile)
 router.route("/update-avatar").put(verifyJWT, upload.single("avatar"), updateUserAvatar)
 router.route("/delete-profile").delete(verifyJWT, deleteUser)
 router.route("/logout").get(verifyJWT, logoutUser)
+router.route("/refresh-token").post(refreshAccessToken)
 
 
 export default router;

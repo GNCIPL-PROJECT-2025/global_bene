@@ -112,15 +112,18 @@ const refreshAccessToken = asyncHandler(async (req, res, next) => {
 
 // *Register Route
 const registerUser = asyncHandler(async (req, res, next) => {
-    const { fullName, email, phone, password } = req.body;
-    const requiredFields = [fullName, email, phone.toString(), password]
+    const { fullName, email, phone, password, gender } = req.body;
+    
+    console.log("Registration data received:", { fullName, email, phone, password: "***", gender });
+    
+    const requiredFields = [fullName, email, phone, password]
     const checkFields = { email, phone }
 
     if (requiredFields.some((field) => !field || field.trim() === "")) return next(new ErrorHandler("All fields are required", 400))
     if (password.length < 8) return next(new ErrorHandler("Password must be at least 8 characters long", 400));
 
     const existingUser = await User.findOne({
-        $or: Object.entries(checkFields).map(([key, value]) => ({ [key]: value }))
+        $or: [{email}, {phone}]
     })
 
     if (existingUser) {
@@ -130,15 +133,22 @@ const registerUser = asyncHandler(async (req, res, next) => {
 
     try {
         const user = await User.create({
-            fullName, email, phone, password
+            fullName, 
+            email, 
+            phone, 
+            password,
+            gender: gender || 'not specified'
         })
         await cookieToken(user, res)
     } catch (error) {
+        console.error("User creation error:", error);
         if (error instanceof mongoose.Error.ValidationError) {
-            Object.values(error.errors).forEach(err => {
-                return next(new ErrorHandler(`Field: ${err.path} → ${err.message}`));
-            });
-        } else return false;
+            for (const err of Object.values(error.errors)) {
+                next(new ErrorHandler(`Field: ${err.path} -> ${err.message}`));
+            }
+        } else {
+            return next(new ErrorHandler(`Database error: ${error.message}`, 500));
+        }
     }
 })
 
@@ -284,11 +294,10 @@ const verifyOtpForUser = asyncHandler(async (req, res, next) => {
     }
 
     const resUser = await User.findById(user._id).select("-password -refreshToken");
-    return res.status(200).
-        cookie("accessToken", accessToken, options)
-        .
-        cookie("refreshToken", refreshToken, options).
-        json({
+    return res.status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json({
             success: true,
             message: `${email} verified successfully\nUser Created`,
             user: resUser, accessToken, refreshToken
@@ -432,7 +441,10 @@ const changeCurrentPassword = asyncHandler(async (req, res, next) => {
 // *Update Profile User
 const updateUserProfile = asyncHandler(async (req, res, next) => {
     const userId = req.user?._id
-    const { fullName, email, phone, gender, social_links = {} } = req.body
+    const { fullName, email, phone, gender, bio, social_links = {} } = req.body
+
+    console.log('Backend: Updating user profile for ID:', userId);
+    console.log('Backend: Update data received:', { fullName, email, phone, gender, bio, social_links });
 
     const requiredFields = [email, phone]
 
@@ -494,7 +506,7 @@ const updateUserProfile = asyncHandler(async (req, res, next) => {
 
     const updatedUser = await User.findByIdAndUpdate(
         userId,
-        { fullName, email, phone, gender, social_links },
+        { fullName, email, phone, gender, bio, social_links },
         { new: true, runValidators: true }
     ).select("-password -refreshToken");
 
@@ -502,6 +514,7 @@ const updateUserProfile = asyncHandler(async (req, res, next) => {
         return next(new ErrorHandler("User not found", 404));
     }
 
+    console.log('Backend: User updated successfully:', updatedUser);
 
     return res.status(200).json({
         success: true,
@@ -571,13 +584,71 @@ const updateUserAvatar = asyncHandler(async (req, res, next) => {
 
 // *User Info Route
 const getLoggedInUserInfo = asyncHandler(async (req, res, next) => {
-    const user = await User.findById(req.user._id).select("-password -refreshToken")
+    const userId = req.user._id;
+
+    // Get user basic info
+    const user = await User.findById(userId).select("-password -refreshToken").populate('savedPosts', '_id title');
+
+    // Calculate stats
+    const [postsCount, commentsCount, upvotesCount, downvotesCount, communitiesCount] = await Promise.all([
+        // Count posts by user
+        mongoose.model('Post').countDocuments({ author: userId }),
+        // Count comments by user
+        mongoose.model('Comment').countDocuments({ author: userId }),
+        // Count upvotes received on user's posts and comments
+        Promise.all([
+            mongoose.model('Post').aggregate([
+                { $match: { author: userId } },
+                { $project: { upvotesCount: { $size: "$upvotes" } } },
+                { $group: { _id: null, total: { $sum: "$upvotesCount" } } }
+            ]),
+            mongoose.model('Comment').aggregate([
+                { $match: { author: userId } },
+                { $project: { upvotesCount: { $size: "$upvotes" } } },
+                { $group: { _id: null, total: { $sum: "$upvotesCount" } } }
+            ])
+        ]).then(([postUpvotes, commentUpvotes]) => {
+            const postTotal = postUpvotes[0]?.total || 0;
+            const commentTotal = commentUpvotes[0]?.total || 0;
+            return postTotal + commentTotal;
+        }),
+        // Count downvotes received on user's posts and comments
+        Promise.all([
+            mongoose.model('Post').aggregate([
+                { $match: { author: userId } },
+                { $project: { downvotesCount: { $size: "$downvotes" } } },
+                { $group: { _id: null, total: { $sum: "$downvotesCount" } } }
+            ]),
+            mongoose.model('Comment').aggregate([
+                { $match: { author: userId } },
+                { $project: { downvotesCount: { $size: "$downvotes" } } },
+                { $group: { _id: null, total: { $sum: "$downvotesCount" } } }
+            ])
+        ]).then(([postDownvotes, commentDownvotes]) => {
+            const postTotal = postDownvotes[0]?.total || 0;
+            const commentTotal = commentDownvotes[0]?.total || 0;
+            return postTotal + commentTotal;
+        }),
+        // Count communities user is member of
+        mongoose.model('Community').countDocuments({ members: userId })
+    ]);
+
+    const userWithStats = {
+        ...user.toObject(),
+        stats: {
+            posts: postsCount,
+            comments: commentsCount,
+            upvotes: upvotesCount,
+            downvotes: downvotesCount,
+            communities: communitiesCount
+        }
+    };
 
     res.status(200).json({
         success: true,
-        user
-    })
-})
+        user: userWithStats
+    });
+});
 
 // *Delete User
 const deleteUser = asyncHandler(async (req, res, next) => {
@@ -601,6 +672,42 @@ const deleteUser = asyncHandler(async (req, res, next) => {
     }
 });
 
+// *Google OAuth Callback
+const googleAuthCallback = asyncHandler(async (req, res, next) => {
+    try {
+        // User is authenticated via passport, req.user contains the user
+        const user = req.user;
+
+        if (!user) {
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=Google authentication failed`);
+        }
+
+        // Generate tokens
+        const accessToken = await user.generateAccessToken();
+        const refreshToken = await user.generateRefreshToken();
+
+        // Save refresh token
+        user.refreshToken = refreshToken;
+        await user.save({ validateBeforeSave: false });
+
+        // Set cookies
+        const options = {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'Strict'
+        };
+
+        res.cookie('accessToken', accessToken, options);
+        res.cookie('refreshToken', refreshToken, options);
+
+        // Redirect to frontend with success
+        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/?auth=success`);
+    } catch (error) {
+        console.error('Google auth callback error:', error);
+        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=Authentication failed`);
+    }
+});
+
 // *Exports
 export {
     refreshAccessToken,
@@ -616,4 +723,5 @@ export {
     updateUserProfile,
     updateUserAvatar,
     deleteUser,
+    googleAuthCallback
 }

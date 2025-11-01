@@ -8,17 +8,21 @@ const userSchema = new Schema({
     fullName: {
         type: String,
         required: true,
-        lowercase: true,
+        trim: true,
         minlength: [4, "Name must be at least 4 charaters long"],
         maxlength: [100, "Name cannot be not more than 100 characters"]
     },
     phone: {
         type: Number,
-        required: true,
+        required: function() {
+            return !this.googleId; // Phone required only if not Google auth
+        },
         unique: true,
+        sparse: true, // Allows multiple null values
         trim: true,
         validate: {
             validator: function (value) {
+                if (!value) return true; // Allow null for Google users
                 const str = value.toString();
                 return /^[1-9]\d{9}$/.test(str) && Number.isInteger(value);
             },
@@ -39,6 +43,11 @@ const userSchema = new Schema({
             message: "Please enter email in correct format - /xyz@gmail.com/"
         }
     },
+    googleId: {
+        type: String,
+        sparse: true, // Allows multiple null values but unique for non-null
+        unique: true
+    },
     gender: {
         type: String,
         required: true,
@@ -46,9 +55,17 @@ const userSchema = new Schema({
         trim: true,
         default: "not specified"
     },
+    bio: {
+        type: String,
+        default: "",
+        maxlength: [500, "Bio cannot be more than 500 characters"],
+        trim: true
+    },
     password: {
         type: String,
-        required: true,
+        required: function() {
+            return !this.googleId; // Password required only if not Google auth
+        },
         minlength: [8, "Password must be at least 8 chatacter long"],
         // select: false
     },
@@ -111,6 +128,11 @@ const userSchema = new Schema({
     forgotPasswordToken: String,
     forgotPasswordTokenExpiry: Date,
 
+    savedPosts: [{
+        type: Schema.Types.ObjectId,
+        ref: "Post"
+    }],
+
 },
     {
         timestamps: true,
@@ -140,7 +162,7 @@ userSchema.methods.generateAccessToken = function () {
         {
             _id: this._id,
             email: this.email,
-            phone: this.phone,
+            phone: this.phone || null,
             fullName: this.fullName,
         },
         process.env.ACCESS_TOKEN_SECRET,

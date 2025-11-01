@@ -1,11 +1,17 @@
-// Here the protected routes like dashboard will go
+import React from 'react';
+import { useSelector } from 'react-redux';
+import { Navigate, useLocation } from 'react-router-dom';
 
-import React from 'react'
+const ProtectedRoute = ({ children }) => {
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const location = useLocation();
 
-const ProtectedRoute = () => {
-  return (
-    <div>ProtectedRoute</div>
-  )
-}
+  if (!isAuthenticated || !user) {
+    // Redirect to login page with return url
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
-export default ProtectedRoute
+  return children;
+};
+
+export default ProtectedRoute;

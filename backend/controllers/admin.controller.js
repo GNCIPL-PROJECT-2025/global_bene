@@ -10,6 +10,7 @@ import crypto from "crypto"
 
 import { User } from "../models/user.model.js";
 import { destroyOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.utils.js";
+import { cloudinaryAvatarRefer } from "../utils/constants.utils.js";
 
 
 // *================================================================================
@@ -164,7 +165,7 @@ const adminUpdateUserAvatar = asyncHandler(async (req, res, next) => {
 
 
     // *UPLOADING NEW AVATAR
-    const newAvatar = await uploadOnCloudinary(avatarLocalPath);
+    const newAvatar = await uploadOnCloudinary(avatarLocalPath, cloudinaryAvatarRefer, { fullName: user.fullName }, req.file.originalname);
     console.log("Previous URL: ", newAvatar)
 
     if (!newAvatar || !newAvatar.url || !newAvatar.public_id) {
@@ -214,7 +215,7 @@ const adminDeleteUser = asyncHandler(async (req, res, next) => {
         console.log("userAvatar", userAvatar)
 
         if (userAvatar) {
-            const deleteAvatarResponse = await destroyOnCloudinary(userAvatar);
+            const deleteAvatarResponse = await destroyOnCloudinary(userAvatar, cloudinaryAvatarRefer);
             console.log("deletedAvatarr:response--", deleteAvatarResponse);
         } else {
             console.log("No avatr found")

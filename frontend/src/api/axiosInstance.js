@@ -1,11 +1,6 @@
-// axiosInstance
-
-// Eg code : 
-
-/*
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://api.greedhunter.com/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -25,7 +20,7 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 🔁 Handle token expiry (optional: refresh logic)
+// 🔁 Handle token expiry (refresh logic)
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -35,23 +30,25 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshResponse = await axios.post(
-          `${API_BASE_URL}/auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
+        // Try to refresh the token
+        const refreshResponse = await axios.post(`${API_BASE_URL}/users/refresh-token`, {}, {
+          withCredentials: true
+        });
 
-        const newAccessToken = refreshResponse.data.accessToken;
-        localStorage.setItem("accessToken", newAccessToken);
-
-        axiosInstance.defaults.headers.Authorization = `Bearer ${newAccessToken}`;
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-        return axiosInstance(originalRequest);
-      } catch (err) {
-        console.error("Session expired. Please log in again.");
-        localStorage.removeItem("accessToken");
-        window.location.href = "/login";
+        if (refreshResponse.data.accessToken) {
+          // Store new access token
+          localStorage.setItem('accessToken', refreshResponse.data.accessToken);
+          // Retry the original request
+          originalRequest.headers.Authorization = `Bearer ${refreshResponse.data.accessToken}`;
+          return axiosInstance(originalRequest);
+        }
+      } catch (refreshError) {
+        // Refresh failed, logout
+        localStorage.removeItem('accessToken');
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(refreshError);
       }
     }
 
@@ -60,6 +57,3 @@ axiosInstance.interceptors.response.use(
 );
 
 export default axiosInstance;
-
-
-*/
