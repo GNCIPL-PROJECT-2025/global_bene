@@ -52,10 +52,20 @@ export const createPost = asyncHandler(async (req, res) => {
         media
     });
 
+    if (req.newReport) {
+        req.newReport.itemId = post._id;
+        req.newReport.itemType = "post";
+        const report = Report(req.newReport);
+        await report.save();
+        post.status = "flagged";  //flag the post for review by moderators
+        post.save();
+        console.log("Spam report created for post:", req.newReport);
+    }
+
     await post.populate('author', 'fullName avatar');
     await post.populate('community', 'name');
 
-    res.status(201).json(new ApiResponse(201, post, "Post created successfully"));
+    res.status(201).json(new ApiResponse(201, post, req.newReport ? "Post created successfully and flagged" : "Post created successfully"));
 });
 
 // Get all posts (with pagination and filtering)
@@ -140,6 +150,16 @@ export const updatePost = asyncHandler(async (req, res) => {
 
     post.title = title || post.title;
     post.content = content || post.content;
+
+    if (req.newReport) {
+        req.newReport.itemId = post._id;
+        req.newReport.itemType = "post";
+        const report = Report(req.newReport);
+        await report.save();
+        post.status = "flagged";  //flag the post for review by moderators
+
+        console.log("Spam report created for post:", req.newReport);
+    }
 
     await post.save();
     await post.populate('author', 'fullName avatar');

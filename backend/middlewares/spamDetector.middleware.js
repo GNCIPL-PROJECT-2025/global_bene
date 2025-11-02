@@ -24,13 +24,21 @@ export const spamDetector = asyncHandler(async (req, res, next) => {
         console.log(`spamProbability: ${spamProbability}`)
         console.log("-------------\n")
 
-        if (isSpam && spamProbability > 0.75) {
-            return res.status(304).send({ message: "Spam/Toxicity detected in your comment please modify it!", isSpam: true, spamProbability });
+        if (isSpam && spamProbability > 0.90) {
+            const newReport = {
+                reporter: null, //since it's system generated
+                itemId: req.params.id || null,
+                spamScore: spamProbability,
+                reason: "Spam/Toxicity detected by ML Service",
+                details: `Spam Probability: ${spamProbability}`
+            };
+
+            req.newReport = newReport; // attach the report to req for further use if needed
+            // return res.status(304).send({ message: "Spam/Toxicity detected in your content please modify it!", isSpam: true, spamProbability });
         }
         next();
     } catch (err) {
-        console.warn("spamPredict failed", err.message);
-
+        console.log("spamPredict failed", err.message);
         next(err);
     }
 })

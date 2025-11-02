@@ -4,6 +4,7 @@ import { Post } from "../models/post.model.js";
 import { Notification } from "../models/notification.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { Report } from "../models/report.model.js";
 
 // Create a new comment
 export const createComment = asyncHandler(async (req, res) => {
@@ -47,6 +48,16 @@ export const createComment = asyncHandler(async (req, res) => {
     await comment.populate('author', 'fullName avatar');
     await comment.populate('post', 'title');
 
+    if (req.newReport) {
+        req.newReport.itemId = comment._id;
+        req.newReport.itemType = "comment";
+        const report = Report(req.newReport);
+        await report.save();
+        comment.status = "flagged";  //flag the comment for review by moderators
+        comment.save();
+        console.log("Spam report created for comment:", req.newReport);
+    }
+
     // Create notification for post author if not self-comment
     if (post.author.toString() !== author.toString()) {
         await Notification.create({
@@ -58,7 +69,7 @@ export const createComment = asyncHandler(async (req, res) => {
         });
     }
 
-    res.status(201).json(new ApiResponse(201, comment, "Comment created successfully"));
+    res.status(201).json(new ApiResponse(201, comment, req.newReport ? "Comment created and flagged" : "Comment created successfully"));
 });
 
 // Get comments for a post
@@ -140,12 +151,22 @@ export const updateComment = asyncHandler(async (req, res) => {
         throw new ApiError(403, "Only author can update comment");
     }
 
+    if (req.newReport) {
+        req.newReport.itemId = comment._id;
+        req.newReport.itemType = "comment";
+        const report = Report(req.newReport);
+        await report.save();
+        comment.status = "flagged";  //flag the comment for review by moderators
+        console.log("Spam report created for comment:", req.newReport);
+    }
+
+
     comment.content = content || comment.content;
     await comment.save();
 
     await comment.populate('author', 'fullName avatar');
 
-    res.status(200).json(new ApiResponse(200, comment, "Comment updated successfully"));
+    res.status(200).json(new ApiResponse(200, comment, req.newReport ? "Comment updated succesfully and flagged" : "Comment updated successfully"));
 });
 
 // Delete comment (author or moderator)
