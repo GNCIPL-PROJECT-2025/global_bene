@@ -50,5 +50,10 @@ router.route("/delete-profile").delete(verifyJWT, deleteUser)
 router.route("/logout").get(verifyJWT, logoutUser)
 router.route("/refresh-token").post(refreshAccessToken)
 
+// *Temporary test route for 500 error (remove after testing)
+router.route("/login").get((req, res, next) => {
+    next(new Error("Test 500 error"));
+});
+
 
 export default router;

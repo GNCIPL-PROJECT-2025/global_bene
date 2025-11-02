@@ -31,9 +31,11 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // ================ CORS Configuration ===================
-const allowedOrigins = process.env.CORS_ORIGIN.split(",");
+// -const allowedOrigins = process.env.CORS_ORIGIN.split(",");
+const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : ["http://localhost:5173"];
 app.use(cors({
     origin: (origin, callback) => {
+      
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {

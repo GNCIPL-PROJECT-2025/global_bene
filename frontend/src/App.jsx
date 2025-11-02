@@ -13,6 +13,11 @@ import ExploreCommunities from './components/common/ExploreCommunities';
 import CreateCommunityPage from './pages/publicPages/CreateCommunityPage';
 import CreatePostPage from './pages/publicPages/CreatePostPage';
 import PostDetailPage from './pages/publicPages/PostDetailPage';
+import NotFoundPage from './pages/ErrorPages/NotFoundPage';
+import ForbiddenPage from './pages/ErrorPages/ForbiddenPage';
+import ServerErrorPage from './pages/ErrorPages/ServerErrorPage';
+
+import TermsConditionPage from './pages/publicPages/TermsConditionPage';
 import ProtectedRoute from './routes/ProtectedRoute';
 import './index.css';
 
@@ -34,7 +39,12 @@ const App = () => {
           <Route path="/create-community" element={<ProtectedRoute><CreateCommunityPage /></ProtectedRoute>} />
           <Route path="/create-post" element={<ProtectedRoute><CreatePostPage /></ProtectedRoute>} />
           <Route path="/post/:postId" element={<ProtectedRoute><PostDetailPage /></ProtectedRoute>} />
-          {/* Add more routes as needed */}
+          
+          <Route path="/terms" element={<TermsConditionPage />} />
+          <Route path="/403" element={<ForbiddenPage />} />
+
+          <Route path="/500" element={<ServerErrorPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </div>
     </Router>

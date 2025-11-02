@@ -52,6 +52,27 @@ axiosInstance.interceptors.response.use(
       }
     }
 
+    // Handle 403 Forbidden errors
+    if (error.response?.status === 403) {
+      // Redirect to 403 page
+      window.location.href = '/403';
+      return Promise.reject(error);
+    }
+
+    // Handle 404 Not Found errors
+    if (error.response?.status === 404) {
+      // Redirect to 404 page
+      window.location.href = '/404';
+      return Promise.reject(error);
+    }
+
+    // Handle 500 Server errors
+    if (error.response?.status === 500) {
+      // Redirect to 500 page
+      window.location.href = '/500';
+      return Promise.reject(error);
+    }
+
     return Promise.reject(error);
   }
 );
