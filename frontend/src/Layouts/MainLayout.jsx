@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import CreateCommunityModal from '@/components/common/CreateCommunityModal';
+import Footer from '@/components/layout/Footer';
 
 const MainLayout = ({ children, communities = [], userCommunities = [], notificationsCount = 0 }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -50,6 +51,7 @@ const MainLayout = ({ children, communities = [], userCommunities = [], notifica
         onClose={() => setShowCreateModal(false)}
         onCreate={handleCreateCommunity}
       />
+      <Footer />
     </div>
   );
 };
