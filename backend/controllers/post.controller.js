@@ -175,7 +175,7 @@ export const upvotePost = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const post = await Post.findById(id);
+    const post = await Post.findById(id).populate('author');
     if (!post) {
         throw new ApiError(404, "Post not found");
     }
@@ -183,6 +183,7 @@ export const upvotePost = asyncHandler(async (req, res) => {
     const hasUpvoted = post.upvotes.includes(userId);
     const hasDownvoted = post.downvotes.includes(userId);
 
+    let notification = null;
     if (hasUpvoted) {
         // Remove upvote
         post.upvotes = post.upvotes.filter(id => id.toString() !== userId.toString());
@@ -192,11 +193,33 @@ export const upvotePost = asyncHandler(async (req, res) => {
         if (hasDownvoted) {
             post.downvotes = post.downvotes.filter(id => id.toString() !== userId.toString());
         }
+
+        // Create notification if not self-vote
+        if (post.author._id.toString() !== userId.toString()) {
+            notification = await Notification.create({
+                user: post.author._id,
+                type: "upvote",
+                message: `${req.user.fullName} upvoted your post`,
+                relatedPost: id
+            });
+        }
     }
 
     await post.save();
     await post.populate('upvotes', 'fullName');
     await post.populate('downvotes', 'fullName');
+
+    // Emit vote update to post room
+    global.io.to(`post_${id}`).emit('vote-updated', {
+        postId: id,
+        upvotes: post.upvotes,
+        downvotes: post.downvotes
+    });
+
+    // Emit notification if created
+    if (notification) {
+        global.io.to(`user_${post.author._id}`).emit('new-notification', notification);
+    }
 
     res.status(200).json(new ApiResponse(200, post, "Post upvoted successfully"));
 });
@@ -206,7 +229,7 @@ export const downvotePost = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const post = await Post.findById(id);
+    const post = await Post.findById(id).populate('author');
     if (!post) {
         throw new ApiError(404, "Post not found");
     }
@@ -214,6 +237,7 @@ export const downvotePost = asyncHandler(async (req, res) => {
     const hasUpvoted = post.upvotes.includes(userId);
     const hasDownvoted = post.downvotes.includes(userId);
 
+    let notification = null;
     if (hasDownvoted) {
         // Remove downvote
         post.downvotes = post.downvotes.filter(id => id.toString() !== userId.toString());
@@ -223,11 +247,33 @@ export const downvotePost = asyncHandler(async (req, res) => {
         if (hasUpvoted) {
             post.upvotes = post.upvotes.filter(id => id.toString() !== userId.toString());
         }
+
+        // Create notification if not self-vote
+        if (post.author._id.toString() !== userId.toString()) {
+            notification = await Notification.create({
+                user: post.author._id,
+                type: "downvote",
+                message: `${req.user.fullName} downvoted your post`,
+                relatedPost: id
+            });
+        }
     }
 
     await post.save();
     await post.populate('upvotes', 'fullName');
     await post.populate('downvotes', 'fullName');
+
+    // Emit vote update to post room
+    global.io.to(`post_${id}`).emit('vote-updated', {
+        postId: id,
+        upvotes: post.upvotes,
+        downvotes: post.downvotes
+    });
+
+    // Emit notification if created
+    if (notification) {
+        global.io.to(`user_${post.author._id}`).emit('new-notification', notification);
+    }
 
     res.status(200).json(new ApiResponse(200, post, "Post downvoted successfully"));
 });

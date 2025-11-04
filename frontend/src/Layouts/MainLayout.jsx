@@ -5,9 +5,10 @@ import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import CreateCommunityModal from '@/components/common/CreateCommunityModal';
 
-const MainLayout = ({ children, communities = [], userCommunities = [], notificationsCount = 0 }) => {
+const MainLayout = ({ children, communities = [], userCommunities = [] }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { user } = useSelector((state) => state.auth);
+  const { unreadCount } = useSelector((state) => state.notification);
 
   const handleCreateCommunity = (newCommunity) => {
     // Handle community creation
@@ -19,7 +20,7 @@ const MainLayout = ({ children, communities = [], userCommunities = [], notifica
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar user={user} notificationsCount={notificationsCount} />
+      <Navbar user={user} notificationsCount={unreadCount} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         <div className="flex gap-4 lg:gap-6">

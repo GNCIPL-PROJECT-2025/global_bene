@@ -112,6 +112,18 @@ const communitySlice = createSlice({
     clearCurrentCommunity: (state) => {
       state.currentCommunity = null;
     },
+    updateCommunityMembers: (state, action) => {
+      const { communityId, members } = action.payload;
+      const communityIndex = state.communities.findIndex(c => c._id === communityId);
+      if (communityIndex !== -1) {
+        state.communities[communityIndex].members = members;
+        state.communities[communityIndex].memberCount = members.length;
+      }
+      if (state.currentCommunity && state.currentCommunity._id === communityId) {
+        state.currentCommunity.members = members;
+        state.currentCommunity.memberCount = members.length;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -237,5 +249,5 @@ const communitySlice = createSlice({
   },
 });
 
-export const { clearError, clearCurrentCommunity } = communitySlice.actions;
+export const { clearError, clearCurrentCommunity, updateCommunityMembers } = communitySlice.actions;
 export default communitySlice.reducer;

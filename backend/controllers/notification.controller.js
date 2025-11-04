@@ -77,3 +77,15 @@ export const getUnreadNotificationsCount = asyncHandler(async (req, res) => {
 
     res.status(200).json(new ApiResponse(200, { count }, "Unread notifications count fetched successfully"));
 });
+
+// Subscribe to push notifications
+export const subscribeToPushNotifications = asyncHandler(async (req, res) => {
+    const { endpoint, keys } = req.body;
+    const userId = req.user._id;
+
+    // Here you would save the subscription to database
+    // For now, just acknowledge
+    console.log('Push subscription for user:', userId, { endpoint, keys });
+
+    res.status(200).json(new ApiResponse(200, null, "Subscribed to push notifications"));
+});

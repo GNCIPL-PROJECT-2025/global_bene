@@ -87,6 +87,11 @@ const authSlice = createSlice({
         state.user.savedPosts = action.payload;
       }
     },
+    updateUserStats: (state, action) => {
+      if (state.user && state.user.stats) {
+        state.user.stats = { ...state.user.stats, ...action.payload };
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -150,5 +155,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, setUser, updateSavedPosts } = authSlice.actions;
+export const { clearError, setUser, updateSavedPosts, updateUserStats } = authSlice.actions;
 export default authSlice.reducer;

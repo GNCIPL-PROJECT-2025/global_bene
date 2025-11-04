@@ -9,12 +9,17 @@ import RequestOtp from './pages/authPages/RequestOtp';
 import VerifyOtp from './pages/authPages/VerifyOtp';
 import ProfilePage from './pages/ProfilePage';
 import SavedPostsPage from './pages/SavedPostsPage';
+import NotificationsPage from './pages/NotificationsPage';
 import ExploreCommunities from './components/common/ExploreCommunities';
 import CreateCommunityPage from './pages/publicPages/CreateCommunityPage';
 import CreatePostPage from './pages/publicPages/CreatePostPage';
 import PostDetailPage from './pages/publicPages/PostDetailPage';
 import ProtectedRoute from './routes/ProtectedRoute';
 import './index.css';
+import AboutPage from '@/pages/publicPages/AboutPage';
+import ContactPage from '@/pages/publicPages/ContactPage';
+import PrivacyPolicyPage from '@/pages/publicPages/PrivacyPolicyPage';
+import TermsConditionPage from '@/pages/publicPages/TermsConditionPage';
 
 const App = () => {
   return (
@@ -30,10 +35,15 @@ const App = () => {
           <Route path="/verify-otp" element={<VerifyOtp />} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/saved-posts" element={<ProtectedRoute><SavedPostsPage /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
           <Route path="/communities" element={<ExploreCommunities />} />
           <Route path="/create-community" element={<ProtectedRoute><CreateCommunityPage /></ProtectedRoute>} />
           <Route path="/create-post" element={<ProtectedRoute><CreatePostPage /></ProtectedRoute>} />
           <Route path="/post/:postId" element={<ProtectedRoute><PostDetailPage /></ProtectedRoute>} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/help" element={<ContactPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsConditionPage />} />
           {/* Add more routes as needed */}
         </Routes>
       </div>

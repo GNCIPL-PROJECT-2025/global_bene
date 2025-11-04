@@ -79,7 +79,7 @@ const Sidebar = ({ communities = [], userCommunities = [], onCreateCommunity }) 
                     to={`/r/${community.name}`}
                     className="font-medium text-sm hover:text-blue-600 block truncate"
                   >
-                    r/{community.name}
+                    g/{community.name}
                   </Link>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Users className="h-3 w-3" />
@@ -128,7 +128,7 @@ const Sidebar = ({ communities = [], userCommunities = [], onCreateCommunity }) 
                       <AvatarImage src={community.avatar?.secure_url} />
                       <AvatarFallback>{community.name?.[0]?.toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <span className="text-sm font-medium">r/{community.name}</span>
+                    <span className="text-sm font-medium">g/{community.name}</span>
                   </Link>
                 </motion.div>
               ))}

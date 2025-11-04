@@ -11,6 +11,7 @@ import {
   unsavePost as unsavePostApi,
   getSavedPosts as getSavedPostsApi
 } from '../../api/post.api';
+import { updateSavedPosts } from './auth.slice';
 
 // Async thunks
 export const createPost = createAsyncThunk(
@@ -99,9 +100,15 @@ export const downvotePost = createAsyncThunk(
 
 export const savePost = createAsyncThunk(
   'post/savePost',
-  async (postId, { rejectWithValue }) => {
+  async (postId, { rejectWithValue, dispatch, getState }) => {
     try {
       const response = await savePostApi(postId);
+      // Update user's saved posts in auth state
+      const { auth } = getState();
+      if (auth.user) {
+        const updatedSavedPosts = [...(auth.user.savedPosts || []), postId];
+        dispatch(updateSavedPosts(updatedSavedPosts));
+      }
       return { postId, saved: true };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to save post');
@@ -111,9 +118,17 @@ export const savePost = createAsyncThunk(
 
 export const unsavePost = createAsyncThunk(
   'post/unsavePost',
-  async (postId, { rejectWithValue }) => {
+  async (postId, { rejectWithValue, dispatch, getState }) => {
     try {
       const response = await unsavePostApi(postId);
+      // Update user's saved posts in auth state
+      const { auth } = getState();
+      if (auth.user) {
+        const updatedSavedPosts = (auth.user.savedPosts || []).filter(id => 
+          (typeof id === 'string' ? id : id._id || id) !== postId
+        );
+        dispatch(updateSavedPosts(updatedSavedPosts));
+      }
       return { postId, saved: false };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to unsave post');
@@ -167,6 +182,44 @@ const postSlice = createSlice({
       const index = state.posts.findIndex(post => post._id === updatedPost._id);
       if (index !== -1) {
         state.posts[index] = updatedPost;
+      }
+    },
+    updatePostVotes: (state, action) => {
+      const { postId, upvotes, downvotes } = action.payload;
+      // Update in posts list
+      const postIndex = state.posts.findIndex(post => post._id === postId);
+      if (postIndex !== -1) {
+        state.posts[postIndex].upvotes = upvotes;
+        state.posts[postIndex].downvotes = downvotes;
+      }
+      // Update current post
+      if (state.currentPost && state.currentPost._id === postId) {
+        state.currentPost.upvotes = upvotes;
+        state.currentPost.downvotes = downvotes;
+      }
+    },
+    incrementCommentsCount: (state, action) => {
+      const postId = action.payload;
+      // Update in posts list
+      const postIndex = state.posts.findIndex(post => post._id === postId);
+      if (postIndex !== -1) {
+        state.posts[postIndex].commentsCount = (state.posts[postIndex].commentsCount || 0) + 1;
+      }
+      // Update current post
+      if (state.currentPost && state.currentPost._id === postId) {
+        state.currentPost.commentsCount = (state.currentPost.commentsCount || 0) + 1;
+      }
+    },
+    decrementCommentsCount: (state, action) => {
+      const postId = action.payload;
+      // Update in posts list
+      const postIndex = state.posts.findIndex(post => post._id === postId);
+      if (postIndex !== -1) {
+        state.posts[postIndex].commentsCount = Math.max((state.posts[postIndex].commentsCount || 0) - 1, 0);
+      }
+      // Update current post
+      if (state.currentPost && state.currentPost._id === postId) {
+        state.currentPost.commentsCount = Math.max((state.currentPost.commentsCount || 0) - 1, 0);
       }
     }
   },
@@ -284,14 +337,26 @@ const postSlice = createSlice({
         }
       })
       // Save post
-      .addCase(savePost.fulfilled, (state, action) => {
-        // Save action doesn't change post data, just user's saved posts
-        // This could be handled in auth slice if we want to track saved posts there
+      .addCase(savePost.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(savePost.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(savePost.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
       // Unsave post
-      .addCase(unsavePost.fulfilled, (state, action) => {
-        // Unsave action doesn't change post data, just user's saved posts
-        // This could be handled in auth slice if we want to track saved posts there
+      .addCase(unsavePost.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(unsavePost.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(unsavePost.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
       // Fetch saved posts
       .addCase(fetchSavedPosts.pending, (state) => {
@@ -314,5 +379,5 @@ const postSlice = createSlice({
   },
 });
 
-export const { clearPostError, clearCurrentPost, setCurrentPost, updatePostInList } = postSlice.actions;
+export const { clearPostError, clearCurrentPost, setCurrentPost, updatePostInList, updatePostVotes, incrementCommentsCount, decrementCommentsCount } = postSlice.actions;
 export default postSlice.reducer;

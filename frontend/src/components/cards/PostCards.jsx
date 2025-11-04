@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { joinCommunity, leaveCommunity } from '@/redux/slice/community.slice';
+import { joinCommunity, leaveCommunity, updateCommunityMembers } from '@/redux/slice/community.slice';
 import { savePost, unsavePost } from '@/redux/slice/post.slice';
+import { updateUserStats, updateSavedPosts } from '@/redux/slice/auth.slice';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +39,7 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
   const effectiveCommunityData = communityData || (typeof community === 'object' ? community : null);
   
   const isJoined = user && effectiveCommunityData?.members?.some(member => 
-    typeof member === 'string' ? member === user._id : member._id === user._id
+    (typeof member === 'string' ? member : member._id.toString()) === user._id.toString()
   );
 
   const isSaved = user && user.savedPosts?.some(savedPost => 
@@ -46,66 +47,74 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
   );
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [localIsSaved, setLocalIsSaved] = useState(isSaved);
-  const [localIsJoined, setLocalIsJoined] = useState(isJoined);
-
-  useEffect(() => {
-    setLocalIsSaved(isSaved);
-  }, [isSaved]);
-
-  useEffect(() => {
-    setLocalIsJoined(isJoined);
-  }, [isJoined]);
+  const [isLoadingSave, setIsLoadingSave] = useState(false);
 
   const handleJoinToggle = async () => {
-    if (!communityId || !user) return;
+    if (!communityId || !user || communityLoading) return;
 
     // Store the previous state for error recovery
-    const previousState = localIsJoined;
+    const previousState = isJoined;
 
     // Optimistically update UI
-    setLocalIsJoined(!localIsJoined);
+    const updatedMembers = previousState
+      ? effectiveCommunityData.members.filter(member => 
+          (typeof member === 'string' ? member : member._id) !== user._id
+        )
+      : [...(effectiveCommunityData.members || []), user._id];
+
+    // Update local communities state optimistically
+    const updatedCommunity = {
+      ...effectiveCommunityData,
+      members: updatedMembers,
+      memberCount: updatedMembers.length
+    };
+
+    // Dispatch optimistic update
+    dispatch(updateCommunityMembers({ communityId, members: updatedMembers }));
 
     try {
       if (previousState) {
-        // Double-check that user is actually a member before trying to leave
-        const isActuallyMember = effectiveCommunityData?.members?.some(member => 
-          typeof member === 'string' ? member === user._id : member._id === user._id
-        );
-        
-        if (!isActuallyMember) {
-          console.warn('User is not actually a member of this community, reverting UI state');
-          setLocalIsJoined(previousState);
-          return;
-        }
-        
         await dispatch(leaveCommunity(communityId)).unwrap();
+        dispatch(updateUserStats({ communities: (user.stats?.communities || 0) - 1 }));
       } else {
         await dispatch(joinCommunity(communityId)).unwrap();
+        dispatch(updateUserStats({ communities: (user.stats?.communities || 0) + 1 }));
       }
     } catch (error) {
-      // Revert to previous state on error
-      setLocalIsJoined(previousState);
+      // Revert optimistic update
+      dispatch(updateCommunityMembers({ communityId, members: effectiveCommunityData.members }));
       console.error('Failed to toggle community membership:', error);
     }
   };
 
   const handleSaveToggle = async () => {
-    if (!user) return;
+    if (!user || isLoadingSave) return;
 
-    // Optimistically update UI
-    setLocalIsSaved(!localIsSaved);
+    setIsLoadingSave(true);
+
+    // Optimistically update the UI by dispatching the action
+    const currentSavedState = isSaved;
+    const updatedSavedPosts = currentSavedState
+      ? user.savedPosts.filter(savedPost => 
+          (typeof savedPost === 'string' ? savedPost : savedPost._id) !== _id
+        )
+      : [...(user.savedPosts || []), _id];
+
+    // Optimistically update Redux state
+    dispatch(updateSavedPosts(updatedSavedPosts));
 
     try {
-      if (localIsSaved) {
-        await dispatch(unsavePost(_id));
+      if (currentSavedState) {
+        await dispatch(unsavePost(_id)).unwrap();
       } else {
-        await dispatch(savePost(_id));
+        await dispatch(savePost(_id)).unwrap();
       }
     } catch (error) {
       // Revert on error
-      setLocalIsSaved(localIsSaved);
+      dispatch(updateSavedPosts(user.savedPosts || []));
       console.error('Failed to toggle save status:', error);
+    } finally {
+      setIsLoadingSave(false);
     }
   };
 
@@ -167,7 +176,7 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
                 <AvatarFallback>{(effectiveCommunityData?.name || community?.name || 'C')[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
               <span className="font-medium hover:text-orange-600 cursor-pointer transition-colors">
-                r/{effectiveCommunityData?.name || community?.name}
+                g/{effectiveCommunityData?.name || community?.name}
               </span>
               <span>•</span>
               <span>Posted by</span>
@@ -190,14 +199,14 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
               disabled={communityLoading}
               className={`
                 flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 self-start sm:self-auto
-                ${localIsJoined 
+                ${isJoined 
                   ? 'bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100' 
                   : 'bg-muted text-muted-foreground border border-border hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
                 }
                 ${communityLoading ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
-              {localIsJoined ? (
+              {isJoined ? (
                 <>
                   <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                   <span>Joined</span>
@@ -308,10 +317,11 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   onClick={handleSaveToggle}
-                  className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground hover:text-foreground ${localIsSaved ? 'text-blue-600' : ''}`}
+                  disabled={isLoadingSave}
+                  className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground hover:text-foreground ${isSaved ? 'text-blue-600' : ''} ${isLoadingSave ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <Bookmark className={`h-3 w-3 sm:h-4 sm:w-4 ${localIsSaved ? 'fill-current' : ''}`} />
-                  <span className="font-medium hidden sm:inline">{localIsSaved ? 'Saved' : 'Save'}</span>
+                  <Bookmark className={`h-3 w-3 sm:h-4 sm:w-4 ${isSaved ? 'fill-current' : ''}`} />
+                  <span className="font-medium hidden sm:inline">{isSaved ? 'Saved' : 'Save'}</span>
                 </motion.button>
               </div>
             </div>

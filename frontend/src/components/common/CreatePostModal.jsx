@@ -250,7 +250,7 @@ const CreatePostModal = ({ isOpen, onClose, communityId = null }) => {
                       ) : communities.length > 0 ? (
                         communities.map(community => (
                           <SelectItem key={community._id} value={community._id}>
-                            r/{community.name}
+                            g/{community.name}
                           </SelectItem>
                         ))
                       ) : (

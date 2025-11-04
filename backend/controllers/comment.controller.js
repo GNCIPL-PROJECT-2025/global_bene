@@ -49,14 +49,40 @@ export const createComment = asyncHandler(async (req, res) => {
 
     // Create notification for post author if not self-comment
     if (post.author.toString() !== author.toString()) {
-        await Notification.create({
+        const notification = await Notification.create({
             user: post.author,
             type: "comment",
             message: `${req.user.fullName} commented on your post`,
             relatedPost: postId,
             relatedComment: comment._id
         });
+
+        // Emit real-time notification
+        global.io.to(`user_${post.author}`).emit('new-notification', notification);
     }
+
+    // Create notification for parent comment author if replying
+    if (parentCommentId) {
+        const parentComment = await Comment.findById(parentCommentId).populate('author');
+        if (parentComment.author._id.toString() !== author.toString()) {
+            const replyNotification = await Notification.create({
+                user: parentComment.author._id,
+                type: "reply",
+                message: `${req.user.fullName} replied to your comment`,
+                relatedPost: postId,
+                relatedComment: comment._id
+            });
+
+            // Emit real-time notification
+            global.io.to(`user_${parentComment.author._id}`).emit('new-notification', replyNotification);
+        }
+    }
+
+    // Emit comment update to post room
+    global.io.to(`post_${postId}`).emit('comment-added', {
+        comment: await comment.populate('author', 'fullName avatar'),
+        postId
+    });
 
     res.status(201).json(new ApiResponse(201, comment, "Comment created successfully"));
 });
@@ -186,7 +212,7 @@ export const upvoteComment = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const comment = await Comment.findById(id);
+    const comment = await Comment.findById(id).populate('author').populate('post');
     if (!comment) {
         throw new ApiError(404, "Comment not found");
     }
@@ -194,6 +220,7 @@ export const upvoteComment = asyncHandler(async (req, res) => {
     const hasUpvoted = comment.upvotes.includes(userId);
     const hasDownvoted = comment.downvotes.includes(userId);
 
+    let notification = null;
     if (hasUpvoted) {
         comment.upvotes = comment.upvotes.filter(id => id.toString() !== userId.toString());
     } else {
@@ -201,11 +228,34 @@ export const upvoteComment = asyncHandler(async (req, res) => {
         if (hasDownvoted) {
             comment.downvotes = comment.downvotes.filter(id => id.toString() !== userId.toString());
         }
+
+        // Create notification if not self-vote
+        if (comment.author._id.toString() !== userId.toString()) {
+            notification = await Notification.create({
+                user: comment.author._id,
+                type: "upvote",
+                message: `${req.user.fullName} upvoted your comment`,
+                relatedPost: comment.post._id,
+                relatedComment: id
+            });
+        }
     }
 
     await comment.save();
     await comment.populate('upvotes', 'fullName');
     await comment.populate('downvotes', 'fullName');
+
+    // Emit vote update to post room
+    global.io.to(`post_${comment.post._id}`).emit('comment-vote-updated', {
+        commentId: id,
+        upvotes: comment.upvotes,
+        downvotes: comment.downvotes
+    });
+
+    // Emit notification if created
+    if (notification) {
+        global.io.to(`user_${comment.author._id}`).emit('new-notification', notification);
+    }
 
     res.status(200).json(new ApiResponse(200, comment, "Comment upvoted successfully"));
 });
@@ -215,7 +265,7 @@ export const downvoteComment = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const comment = await Comment.findById(id);
+    const comment = await Comment.findById(id).populate('author').populate('post');
     if (!comment) {
         throw new ApiError(404, "Comment not found");
     }
@@ -223,6 +273,7 @@ export const downvoteComment = asyncHandler(async (req, res) => {
     const hasUpvoted = comment.upvotes.includes(userId);
     const hasDownvoted = comment.downvotes.includes(userId);
 
+    let notification = null;
     if (hasDownvoted) {
         comment.downvotes = comment.downvotes.filter(id => id.toString() !== userId.toString());
     } else {
@@ -230,11 +281,34 @@ export const downvoteComment = asyncHandler(async (req, res) => {
         if (hasUpvoted) {
             comment.upvotes = comment.upvotes.filter(id => id.toString() !== userId.toString());
         }
+
+        // Create notification if not self-vote
+        if (comment.author._id.toString() !== userId.toString()) {
+            notification = await Notification.create({
+                user: comment.author._id,
+                type: "downvote",
+                message: `${req.user.fullName} downvoted your comment`,
+                relatedPost: comment.post._id,
+                relatedComment: id
+            });
+        }
     }
 
     await comment.save();
     await comment.populate('upvotes', 'fullName');
     await comment.populate('downvotes', 'fullName');
+
+    // Emit vote update to post room
+    global.io.to(`post_${comment.post._id}`).emit('comment-vote-updated', {
+        commentId: id,
+        upvotes: comment.upvotes,
+        downvotes: comment.downvotes
+    });
+
+    // Emit notification if created
+    if (notification) {
+        global.io.to(`user_${comment.author._id}`).emit('new-notification', notification);
+    }
 
     res.status(200).json(new ApiResponse(200, comment, "Comment downvoted successfully"));
 });

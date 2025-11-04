@@ -198,7 +198,7 @@ const CreatePostPage = () => {
                     ) : communities.length > 0 ? (
                       communities.map(community => (
                         <SelectItem key={community._id} value={community._id}>
-                          r/{community.name}
+                          g/{community.name}
                         </SelectItem>
                       ))
                     ) : (
@@ -396,7 +396,7 @@ const CreatePostPage = () => {
                         <span className="font-medium">u/{user?.fullName?.toLowerCase().replace(' ', '')}</span>
                         <span>in</span>
                         <Badge variant="secondary" className="text-xs">
-                          r/{communities.find(c => c._id === selectedCommunity)?.name || selectedCommunity}
+                          g/{communities.find(c => c._id === selectedCommunity)?.name || selectedCommunity}
                         </Badge>
                       </div>
                       <h3 className="font-semibold text-lg mb-2">{title}</h3>

@@ -148,25 +148,15 @@ const CommentCard = ({
     }
   };
 
-  const fallbackToClipboard = async (shareUrl) => {
+  const handleReply = async () => {
+    if (!replyContent.trim()) return;
+    
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      alert('Comment link copied to clipboard!');
+      await onReply(_id, replyContent.trim());
+      setReplyContent('');
+      setShowReplyForm(false);
     } catch (error) {
-      console.error('Failed to copy link:', error);
-      // Fallback: try to use the old method
-      const textArea = document.createElement('textarea');
-      textArea.value = shareUrl;
-      document.body.appendChild(textArea);
-      textArea.select();
-      try {
-        document.execCommand('copy');
-        alert('Comment link copied to clipboard!');
-      } catch (fallbackError) {
-        console.error('Fallback copy failed:', fallbackError);
-        alert('Failed to copy link. Please copy manually: ' + shareUrl);
-      }
-      document.body.removeChild(textArea);
+      console.error('Failed to post reply:', error);
     }
   };
 

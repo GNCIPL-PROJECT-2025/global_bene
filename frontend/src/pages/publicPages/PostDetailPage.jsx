@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader } from '@/components/common/Loader';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { fetchPostById, upvotePost, downvotePost } from '@/redux/slice/post.slice';
+import { fetchPostById, upvotePost, downvotePost, incrementCommentsCount } from '@/redux/slice/post.slice';
 import {
   fetchCommentsForPost,
   fetchRepliesForComment,
@@ -18,6 +18,7 @@ import {
   downvoteComment
 } from '@/redux/slice/comment.slice';
 import { getAllCommunities } from '@/redux/slice/community.slice';
+import { useSocket } from '@/context/SocketContext';
 
 const PostDetailPage = () => {
   const { postId } = useParams();
@@ -26,6 +27,7 @@ const PostDetailPage = () => {
   const { commentsByPost, repliesByComment, loading: commentLoading, error: commentError } = useSelector(state => state.comment);
   const { communities, loading: communitiesLoading } = useSelector(state => state.community);
   const { user } = useSelector(state => state.auth);
+  const { joinPostRoom, leavePostRoom } = useSocket();
 
   const [newComment, setNewComment] = useState('');
 
@@ -39,6 +41,19 @@ const PostDetailPage = () => {
   useEffect(() => {
     dispatch(getAllCommunities());
   }, [dispatch]);
+
+  // Join post room for real-time updates
+  useEffect(() => {
+    if (postId && currentPost) {
+      joinPostRoom(postId);
+    }
+
+    return () => {
+      if (postId) {
+        leavePostRoom(postId);
+      }
+    };
+  }, [postId, currentPost, joinPostRoom, leavePostRoom]);
 
   // Scroll to comment if hash is present in URL
   useEffect(() => {
@@ -82,10 +97,8 @@ const PostDetailPage = () => {
     try {
       const result = await dispatch(createComment({ postId, content: newComment })).unwrap();
       setNewComment('');
-      // Update the post's comment count locally
-      if (currentPost) {
-        currentPost.commentsCount = (currentPost.commentsCount || 0) + 1;
-      }
+      // Update the post's comment count
+      dispatch(incrementCommentsCount(postId));
     } catch (error) {
       console.error('Failed to create comment:', error);
     }
@@ -110,10 +123,8 @@ const PostDetailPage = () => {
   const handleReply = async (parentCommentId, content) => {
     try {
       const result = await dispatch(createComment({ postId, content, parentCommentId })).unwrap();
-      // Update the post's comment count locally for replies too
-      if (currentPost) {
-        currentPost.commentsCount = (currentPost.commentsCount || 0) + 1;
-      }
+      // Update the post's comment count
+      dispatch(incrementCommentsCount(postId));
     } catch (error) {
       console.error('Failed to reply to comment:', error);
     }

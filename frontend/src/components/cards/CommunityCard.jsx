@@ -50,7 +50,7 @@ const CommunityCard = ({ community, onJoin, viewMode = 'grid' }) => {
                       to={`/r/${community.name}`}
                       className="text-lg font-bold hover:text-blue-600 transition-colors block truncate"
                     >
-                      r/{community.name}
+                      g/{community.name}
                     </Link>
                     <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
                       {community.description}
@@ -139,7 +139,7 @@ const CommunityCard = ({ community, onJoin, viewMode = 'grid' }) => {
                 to={`/r/${community.name}`}
                 className="font-bold hover:text-blue-600 transition-colors block truncate"
               >
-                r/{community.name}
+                g/{community.name}
               </Link>
               <Badge variant="secondary" className="text-xs mt-1">
                 {community.category}
