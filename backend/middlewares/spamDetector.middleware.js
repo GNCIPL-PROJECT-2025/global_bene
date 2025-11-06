@@ -12,18 +12,19 @@ export const spamDetector = asyncHandler(async (req, res, next) => {
         // Call the external spam detection API
         const { data } = await axios.post(`${process.env.ML_SERVICE_API_KEY}/predict`, { text });
 
-        const isSpam = data.spam_detection.label_probs.spam
+
         const spamProbability = data.toxicity_detection.all_scores.spam
+        const toxicityProbability = data.toxicity_detection.all_scores.toxic
         console.log("\n-------------\nSPAM DETECTOR MIDDLEWARE")
         console.log(`Text: ${text}`)
-        console.log(`isSpam: ${isSpam}`)
+        console.log(`toxicityProbability: ${toxicityProbability}`)
         console.log(`spamProbability: ${spamProbability}`)
         console.log("-------------\n")
 
-        if (spamProbability > 0.90) {
+        if (spamProbability > 0.90 || toxicityProbability > 0.90) {
             return res.send({ message: "Your content has high spam/toxicity please modify it..!" })
         }
-        if (spamProbability > 0.50) {
+        if (spamProbability > 0.50 || toxicityProbability > 0.50) {
             const newReport = {
                 reporter: null, //since it's system generated
                 itemId: req.params.id || null,
