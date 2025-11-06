@@ -32,6 +32,10 @@ const commentSchema = new Schema({
     repliesCount: {
         type: Number,
         default: 0
+    },
+    status: {   // flagged when commment is reported
+        type: String, enum: ['active', 'removed', 'flagged'], default:
+            'active'
     }
 }, {
     timestamps: true

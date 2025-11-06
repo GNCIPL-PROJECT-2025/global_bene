@@ -7,6 +7,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.utils.js";
 import { cloudinaryPostRefer } from "../utils/constants.utils.js";
+import { Report } from "../models/report.model.js";
 
 // Create a new post
 export const createPost = asyncHandler(async (req, res) => {
@@ -51,15 +52,22 @@ export const createPost = asyncHandler(async (req, res) => {
         type: type || "text",
         media
     });
+    await post.save();
 
     if (req.newReport) {
-        req.newReport.itemId = post._id;
-        req.newReport.itemType = "post";
-        const report = Report(req.newReport);
-        await report.save();
-        post.status = "flagged";  //flag the post for review by moderators
-        post.save();
-        console.log("Spam report created for post:", req.newReport);
+        try {
+            req.newReport.itemId = post._id;
+            req.newReport.itemType = "post";
+            const report = Report(req.newReport);
+            await report.save();
+            post.status = "flagged";  //flag the post for review by moderators
+            await post.save();
+            console.log("Spam report created for post:", req.newReport);
+
+        } catch (err) {
+            console.log(err)
+            return res.status(505).send({ message: "Internal Server Error" });
+        }
     }
 
     await post.populate('author', 'fullName avatar');
@@ -152,13 +160,19 @@ export const updatePost = asyncHandler(async (req, res) => {
     post.content = content || post.content;
 
     if (req.newReport) {
-        req.newReport.itemId = post._id;
-        req.newReport.itemType = "post";
-        const report = Report(req.newReport);
-        await report.save();
-        post.status = "flagged";  //flag the post for review by moderators
+        try {
+            req.newReport.itemId = post._id;
+            req.newReport.itemType = "post";
+            const report = Report(req.newReport);
+            await report.save();
+            post.status = "flagged";  //flag the post for review by moderators
+            console.log("Spam report created for post:", req.newReport);
 
-        console.log("Spam report created for post:", req.newReport);
+        } catch (err) {
+            console.log(err)
+            return res.status(505).send({ message: "Internal Server Error" });
+        }
+
     }
 
     await post.save();

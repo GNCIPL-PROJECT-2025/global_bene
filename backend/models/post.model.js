@@ -51,6 +51,10 @@ const postSchema = new Schema({
     isLocked: {
         type: Boolean,
         default: false
+    },
+    status: {   // flagged when post is reported
+        type: String, enum: ['active', 'removed', 'flagged'], default:
+            'active'
     }
 }, {
     timestamps: true

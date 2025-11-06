@@ -12,19 +12,18 @@ export const spamDetector = asyncHandler(async (req, res, next) => {
         // Call the external spam detection API
         const { data } = await axios.post(`${process.env.ML_SERVICE_API_KEY}/predict`, { text });
 
-        // since data is not in json format, we need to parse it
-        const resArrayForm = data.split("\n");
-        // the last 2 lines contain the spam info
-        const isSpam = resArrayForm[resArrayForm.length - 2].split(" / ")[0].trim() === "Spam";
-        const spamProbability = parseFloat(resArrayForm[resArrayForm.length - 1].split(": ")[1])
-
+        const isSpam = data.spam_detection.label_probs.spam
+        const spamProbability = data.toxicity_detection.all_scores.spam
         console.log("\n-------------\nSPAM DETECTOR MIDDLEWARE")
         console.log(`Text: ${text}`)
         console.log(`isSpam: ${isSpam}`)
         console.log(`spamProbability: ${spamProbability}`)
         console.log("-------------\n")
 
-        if (isSpam && spamProbability > 0.90) {
+        if (spamProbability > 0.90) {
+            return res.send({ message: "Your content has high spam/toxicity please modify it..!" })
+        }
+        if (spamProbability > 0.50) {
             const newReport = {
                 reporter: null, //since it's system generated
                 itemId: req.params.id || null,
@@ -34,7 +33,7 @@ export const spamDetector = asyncHandler(async (req, res, next) => {
             };
 
             req.newReport = newReport; // attach the report to req for further use if needed
-            // return res.status(304).send({ message: "Spam/Toxicity detected in your content please modify it!", isSpam: true, spamProbability });
+
         }
         next();
     } catch (err) {

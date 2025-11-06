@@ -49,13 +49,19 @@ export const createComment = asyncHandler(async (req, res) => {
     await comment.populate('post', 'title');
 
     if (req.newReport) {
-        req.newReport.itemId = comment._id;
-        req.newReport.itemType = "comment";
-        const report = Report(req.newReport);
-        await report.save();
-        comment.status = "flagged";  //flag the comment for review by moderators
-        comment.save();
-        console.log("Spam report created for comment:", req.newReport);
+        try {
+            req.newReport.itemId = comment._id;
+            req.newReport.itemType = "comment";
+            const report = Report(req.newReport);
+            await report.save();
+            comment.status = "flagged";  //flag the comment for review by moderators
+            await comment.save();
+            console.log("Spam report created for comment:", req.newReport);
+        } catch (err) {
+            console.log(err);
+            return res.status(505).send({ message: "Internal Server Error" });
+        }
+
     }
 
     // Create notification for post author if not self-comment
@@ -152,12 +158,17 @@ export const updateComment = asyncHandler(async (req, res) => {
     }
 
     if (req.newReport) {
-        req.newReport.itemId = comment._id;
-        req.newReport.itemType = "comment";
-        const report = Report(req.newReport);
-        await report.save();
-        comment.status = "flagged";  //flag the comment for review by moderators
-        console.log("Spam report created for comment:", req.newReport);
+        try {
+            req.newReport.itemId = comment._id;
+            req.newReport.itemType = "comment";
+            const report = Report(req.newReport);
+            await report.save();
+            comment.status = "flagged";  //flag the comment for review by moderators
+            console.log("Spam report created for comment:", req.newReport);
+        } catch (err) {
+            console.log(err)
+            return res.status(505).send({ message: "Internal Server Error" });
+        }
     }
 
 

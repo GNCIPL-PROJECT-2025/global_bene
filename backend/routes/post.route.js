@@ -15,6 +15,7 @@ import {
     getSavedPosts,
     getPostsByUser
 } from "../controllers/post.controller.js";
+import { spamDetector } from "../middlewares/spamDetector.middleware.js";
 
 const router = express.Router();
 
@@ -25,8 +26,8 @@ router.route("/user/:userId").get(getPostsByUser);
 router.route("/:id").get(getPostById);
 
 // Protected routes
-router.route("/").post(verifyJWT, upload.single("media"), createPost);
-router.route("/:id").put(verifyJWT, updatePost);
+router.route("/").post(verifyJWT, upload.single("media"), spamDetector, createPost);
+router.route("/:id").put(verifyJWT, spamDetector, updatePost);
 router.route("/:id").delete(verifyJWT, deletePost);
 router.route("/:id/upvote").post(verifyJWT, upvotePost);
 router.route("/:id/downvote").post(verifyJWT, downvotePost);
