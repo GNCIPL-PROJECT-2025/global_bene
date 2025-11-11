@@ -5,12 +5,12 @@ import validator from "validator"
 import crypto from "crypto"
 
 const userSchema = new Schema({
-    fullName: {
+    username: {
         type: String,
-        required: true,
+        // required: true,
         trim: true,
-        minlength: [4, "Name must be at least 4 charaters long"],
-        maxlength: [100, "Name cannot be not more than 100 characters"]
+        minlength: [4, "Username must be at least 4 characters long"],
+        maxlength: [100, "Username cannot be more than 100 characters"]
     },
     phone: {
         type: Number,
@@ -133,6 +133,31 @@ const userSchema = new Schema({
         ref: "Post"
     }],
 
+    joined_at: {
+        type: Date,
+        default: Date.now
+    },
+
+    num_posts: {
+        type: Number,
+        default: 0
+    },
+
+    num_comments: {
+        type: Number,
+        default: 0
+    },
+
+    communities_followed: [{
+        type: Schema.Types.ObjectId,
+        ref: "Community"
+    }],
+
+    num_communities: {
+        type: Number,
+        default: 0
+    },
+
 },
     {
         timestamps: true,
@@ -163,7 +188,7 @@ userSchema.methods.generateAccessToken = function () {
             _id: this._id,
             email: this.email,
             phone: this.phone || null,
-            fullName: this.fullName,
+            username: this.username,
         },
         process.env.ACCESS_TOKEN_SECRET,
         {

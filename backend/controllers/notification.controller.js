@@ -49,7 +49,9 @@ export const markNotificationAsRead = asyncHandler(async (req, res) => {
         userId,
         "read-notification",
         `${req.user.fullName} marked notification as read`,
-        req
+        req,
+        'notification',
+        id
     );
 
     res.status(200).json(new ApiResponse(200, notification, "Notification marked as read"));
@@ -78,7 +80,9 @@ export const deleteNotification = asyncHandler(async (req, res) => {
         userId,
         "delete-notification",
         `${req.user.fullName} deleted notification`,
-        req
+        req,
+        'notification',
+        id
     );
 
     res.status(200).json(new ApiResponse(200, null, "Notification deleted successfully"));

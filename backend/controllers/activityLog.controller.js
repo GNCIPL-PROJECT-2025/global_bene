@@ -15,7 +15,17 @@ export const getMyActivityLogs = async (req, res) => {
         // Return last 50 actions (latest first)
         const recentActivities = log.activities
             .slice(-50) // last 50
-            .reverse(); // show newest first
+            .reverse() // show newest first
+            .map(activity => ({
+                event_id: activity._id,
+                event_type: activity.event_type,
+                user_id: log.user._id,
+                session_id: activity.session_id,
+                entity_type: activity.entity_type,
+                entity_id: activity.entity_id,
+                props: activity.props,
+                timestamp: activity.createdAt
+            }));
 
         res.status(200).json({ activities: recentActivities });
     } catch (error) {
@@ -38,7 +48,30 @@ export const getAllActivityLogs = async (req, res) => {
         if (action) {
             logs = logs.map((log) => ({
                 ...log.toObject(),
-                activities: log.activities.filter((a) => a.action === action),
+                activities: log.activities.filter((a) => a.event_type === action).map(activity => ({
+                    event_id: activity._id,
+                    event_type: activity.event_type,
+                    user_id: log.user._id,
+                    session_id: activity.session_id,
+                    entity_type: activity.entity_type,
+                    entity_id: activity.entity_id,
+                    props: activity.props,
+                    timestamp: activity.createdAt
+                })),
+            }));
+        } else {
+            logs = logs.map((log) => ({
+                ...log.toObject(),
+                activities: log.activities.map(activity => ({
+                    event_id: activity._id,
+                    event_type: activity.event_type,
+                    user_id: log.user._id,
+                    session_id: activity.session_id,
+                    entity_type: activity.entity_type,
+                    entity_id: activity.entity_id,
+                    props: activity.props,
+                    timestamp: activity.createdAt
+                })),
             }));
         }
 
@@ -62,7 +95,11 @@ export const clearUserLogs = async (req, res) => {
             req.user._id,
             "clear-logs",
             `Admin ${req.user.fullName} cleared logs for user ${id}`,
-            req
+            req,
+            null, // entity_type
+            null, // entity_id
+            null, // session_id
+            {} // additionalProps
         );
 
         log.activities = []; // clear the array

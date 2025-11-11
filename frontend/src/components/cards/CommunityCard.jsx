@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,9 +26,8 @@ const CommunityCard = ({ community, onJoin, viewMode = 'grid' }) => {
 
   if (viewMode === 'list') {
     return (
-      <motion.div
-        whileHover={{ scale: 1.01 }}
-        transition={{ duration: 0.2 }}
+      <div
+        className="hover:scale-101 transition-transform duration-200"
       >
         <Card className="hover:shadow-md transition-shadow">
           <CardContent className="p-4">
@@ -38,7 +36,7 @@ const CommunityCard = ({ community, onJoin, viewMode = 'grid' }) => {
               <Avatar className="h-16 w-16">
                 <AvatarImage src={community.avatar?.secure_url} />
                 <AvatarFallback className="text-lg font-bold">
-                  {community.name?.[0]?.toUpperCase()}
+                  {community.title?.[0]?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
 
@@ -50,7 +48,7 @@ const CommunityCard = ({ community, onJoin, viewMode = 'grid' }) => {
                       to={`/r/${community.name}`}
                       className="text-lg font-bold hover:text-blue-600 transition-colors block truncate"
                     >
-                      g/{community.name}
+                      g/{community.title}
                     </Link>
                     <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
                       {community.description}
@@ -58,7 +56,7 @@ const CommunityCard = ({ community, onJoin, viewMode = 'grid' }) => {
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Users className="h-4 w-4" />
-                        <span>{formatMemberCount(community.memberCount)} members</span>
+                        <span>{formatMemberCount(community.members_count)} members</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <MessageSquare className="h-4 w-4" />
@@ -102,15 +100,14 @@ const CommunityCard = ({ community, onJoin, viewMode = 'grid' }) => {
             </div>
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
     );
   }
 
   // Grid view (default)
   return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.2 }}
+    <div
+      className="hover:-translate-y-1 transition-transform duration-200"
     >
       <Card className="hover:shadow-lg transition-all duration-200 overflow-hidden">
         {/* Banner */}
@@ -118,7 +115,7 @@ const CommunityCard = ({ community, onJoin, viewMode = 'grid' }) => {
           <div className="h-20 bg-gradient-to-r from-orange-400 to-red-500 relative overflow-hidden">
             <img
               src={community.banner.secure_url}
-              alt={`${community.name} banner`}
+              alt={`${community.title} banner`}
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-black/20" />
@@ -131,7 +128,7 @@ const CommunityCard = ({ community, onJoin, viewMode = 'grid' }) => {
             <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
               <AvatarImage src={community.avatar?.secure_url} />
               <AvatarFallback className="font-bold">
-                {community.name?.[0]?.toUpperCase()}
+                {community.title?.[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
@@ -139,7 +136,7 @@ const CommunityCard = ({ community, onJoin, viewMode = 'grid' }) => {
                 to={`/r/${community.name}`}
                 className="font-bold hover:text-blue-600 transition-colors block truncate"
               >
-                g/{community.name}
+                g/{community.title}
               </Link>
               <Badge variant="secondary" className="text-xs mt-1">
                 {community.category}
@@ -157,7 +154,7 @@ const CommunityCard = ({ community, onJoin, viewMode = 'grid' }) => {
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-1 text-muted-foreground">
                 <Users className="h-4 w-4" />
-                <span>{formatMemberCount(community.memberCount)}</span>
+                <span>{formatMemberCount(community.members_count)}</span>
               </div>
               <div className="flex items-center gap-1 text-muted-foreground">
                 <MessageSquare className="h-4 w-4" />
@@ -193,7 +190,7 @@ const CommunityCard = ({ community, onJoin, viewMode = 'grid' }) => {
           </Button>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   );
 };
 

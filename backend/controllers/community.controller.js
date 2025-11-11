@@ -9,22 +9,30 @@ import { logActivity } from "../utils/logActivity.utils.js";
 
 // Create a new community
 export const createCommunity = asyncHandler(async (req, res) => {
-    const { name, description } = req.body;
+    const { title, description, name } = req.body;
     const creator = req.user._id;
 
-    if (!name || !description) {
-        throw new ApiError(400, "Name and description are required");
+    if (!title || !description) {
+        throw new ApiError(400, "Title and description are required");
     }
 
-    const existingCommunity = await Community.findOne({ name: name.toLowerCase() });
+    const communityName = name || title; // Use title as fallback for name
+
+    const existingCommunity = await Community.findOne({ 
+        $or: [
+            { title: title.toLowerCase() },
+            { name: communityName.toLowerCase() }
+        ]
+    });
     if (existingCommunity) {
-        throw new ApiError(400, "Community with this name already exists");
+        throw new ApiError(400, "Community with this title or name already exists");
     }
 
     // Handle avatar upload
     let avatar = {};
-    if (req.files?.avatar?.[0]) {
-        const avatarUpload = await uploadOnCloudinary(req.files.avatar[0].path, cloudinaryCommunityRefer, req.user, req.files.avatar[0].originalname);
+    const avatarFile = req.files?.find(file => file.fieldname === 'avatar');
+    if (avatarFile) {
+        const avatarUpload = await uploadOnCloudinary(avatarFile.path, cloudinaryCommunityRefer, req.user, avatarFile.originalname);
         if (avatarUpload) {
             avatar = {
                 public_id: avatarUpload.public_id,
@@ -35,8 +43,9 @@ export const createCommunity = asyncHandler(async (req, res) => {
 
     // Handle banner upload
     let banner = {};
-    if (req.files?.banner?.[0]) {
-        const bannerUpload = await uploadOnCloudinary(req.files.banner[0].path, cloudinaryCommunityRefer, req.user, req.files.banner[0].originalname);
+    const bannerFile = req.files?.find(file => file.fieldname === 'banner');
+    if (bannerFile) {
+        const bannerUpload = await uploadOnCloudinary(bannerFile.path, cloudinaryCommunityRefer, req.user, bannerFile.originalname);
         if (bannerUpload) {
             banner = {
                 public_id: bannerUpload.public_id,
@@ -47,29 +56,35 @@ export const createCommunity = asyncHandler(async (req, res) => {
 
 // In createCommunity
 const community = await Community.create({
-    name: name.toLowerCase(),
+    name: communityName.toLowerCase(),
+    title: title.toLowerCase(),
     description,
-    creator: {
+    creator_id: {
         _id: creator,
-        fullName: req.user.fullName,
+        username: req.user.username,
         avatar: req.user.avatar
     },
     members: [creator],
     moderators: [creator],
     avatar,
     banner,
-    memberCount: 1
+    members_count: 1
 });
 
-    await community.populate('members', 'fullName avatar');
-    await community.populate('moderators', 'fullName avatar');
+    await community.populate('members', 'username avatar');
+    await community.populate('moderators', 'username avatar');
 
     await logActivity(
         creator,
         "community",
-        `${req.user.fullName} created community: ${name}`,
-        req
+        `${req.user.username} created community: ${title}`,
+        req,
+        'community',
+        community._id
     );
+
+    // Increment num_communities for creator
+    await User.findByIdAndUpdate(creator, { $inc: { num_communities: 1 } });
 
     res.status(201).json(new ApiResponse(201, community, "Community created successfully"));
 });
@@ -77,9 +92,9 @@ const community = await Community.create({
 // Get all communities
 export const getAllCommunities = asyncHandler(async (req, res) => {
     const communities = await Community.find({})
-        .populate('members', 'fullName avatar')
-        .select('name description avatar banner memberCount createdAt')
-        .sort({ memberCount: -1, createdAt: -1 });
+        .populate('members', 'username avatar')
+        .select('name title description avatar banner members_count createdAt')
+        .sort({ members_count: -1, createdAt: -1 });
 
     res.status(200).json(new ApiResponse(200, communities, "Communities fetched successfully"));
 });
@@ -89,8 +104,8 @@ export const getCommunityById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     const community = await Community.findById(id)
-        .populate('members', 'fullName avatar')
-        .populate('moderators', 'fullName avatar');
+        .populate('members', 'username avatar')
+        .populate('moderators', 'username avatar');
 
     if (!community) {
         throw new ApiError(404, "Community not found");
@@ -114,18 +129,23 @@ export const joinCommunity = asyncHandler(async (req, res) => {
     }
 
     community.members.push(userId);
-    community.memberCount = community.members.length;
+    community.members_count = community.members.length;
     await community.save();
+
+    // Add to user's communities_followed
+    await User.findByIdAndUpdate(userId, { $push: { communities_followed: id } });
 
     await logActivity(
         userId,
         "join-community",
-        `${req.user.fullName} joined community: ${community.name}`,
-        req
+        `${req.user.username} joined community: ${community.title}`,
+        req,
+        'community',
+        id
     );
 
     // Populate members for consistent response
-    await community.populate('members', 'fullName avatar');
+    await community.populate('members', 'username avatar');
 
     res.status(200).json(new ApiResponse(200, community, "Joined community successfully"));
 });
@@ -145,18 +165,23 @@ export const leaveCommunity = asyncHandler(async (req, res) => {
     }
 
     community.members = community.members.filter(member => member.toString() !== userId.toString());
-    community.memberCount = community.members.length;
+    community.members_count = community.members.length;
     await community.save();
+
+    // Remove from user's communities_followed
+    await User.findByIdAndUpdate(userId, { $pull: { communities_followed: id } });
 
     await logActivity(
         userId,
         "leave-community",
-        `${req.user.fullName} left community: ${community.name}`,
-        req
+        `${req.user.username} left community: ${community.title}`,
+        req,
+        'community',
+        id
     );
 
     // Populate members for consistent response
-    await community.populate('members', 'fullName avatar');
+    await community.populate('members', 'username avatar');
 
     res.status(200).json(new ApiResponse(200, community, "Left community successfully"));
 });
@@ -164,7 +189,7 @@ export const leaveCommunity = asyncHandler(async (req, res) => {
 // Update community (only moderators)
 export const updateCommunity = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { description, rules, isPrivate } = req.body;
+    const { description, rules, is_private } = req.body;
     const userId = req.user._id;
 
     const community = await Community.findById(id);
@@ -178,15 +203,17 @@ export const updateCommunity = asyncHandler(async (req, res) => {
 
     community.description = description || community.description;
     community.rules = rules || community.rules;
-    community.isPrivate = isPrivate !== undefined ? isPrivate : community.isPrivate;
+    community.is_private = is_private !== undefined ? is_private : community.is_private;
 
     await community.save();
 
     await logActivity(
         userId,
         "update-community",
-        `${req.user.fullName} updated community: ${community.name}`,
-        req
+        `${req.user.username} updated community: ${community.title}`,
+        req,
+        'community',
+        id
     );
 
     res.status(200).json(new ApiResponse(200, community, "Community updated successfully"));
@@ -202,18 +229,23 @@ export const deleteCommunity = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Community not found");
     }
 
-    if (community.creator._id.toString() !== userId.toString()) {
+    if (community.creator_id._id.toString() !== userId.toString()) {
         throw new ApiError(403, "Only creator can delete community");
     }
 
     await logActivity(
         userId,
         "delete-community",
-        `${req.user.fullName} deleted community: ${community.name}`,
-        req
+        `${req.user.username} deleted community: ${community.title}`,
+        req,
+        'community',
+        id
     );
 
     await Community.findByIdAndDelete(id);
+
+    // Decrement num_communities for creator
+    await User.findByIdAndUpdate(userId, { $inc: { num_communities: -1 } });
 
     res.status(200).json(new ApiResponse(200, null, "Community deleted successfully"));
 });

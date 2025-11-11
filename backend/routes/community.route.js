@@ -22,10 +22,7 @@ router.route("/").get(getAllCommunities);
 router.route("/:id").get(getCommunityById);
 
 // Protected routes
-router.route("/").post(verifyJWT, upload.fields([
-  { name: 'avatar', maxCount: 1 },
-  { name: 'banner', maxCount: 1 }
-]), createCommunity);
+router.route("/").post(verifyJWT, upload.any(), createCommunity);
 router.route("/:id/join").post(verifyJWT, joinCommunity);
 router.route("/:id/leave").post(verifyJWT, leaveCommunity);
 router.route("/:id").put(verifyJWT, updateCommunity);

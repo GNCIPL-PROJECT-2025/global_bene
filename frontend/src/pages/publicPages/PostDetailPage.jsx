@@ -95,7 +95,7 @@ const PostDetailPage = () => {
   const handleCreateComment = async () => {
     if (!newComment.trim()) return;
     try {
-      const result = await dispatch(createComment({ postId, content: newComment })).unwrap();
+      const result = await dispatch(createComment({ postId, body: newComment })).unwrap();
       setNewComment('');
       // Update the post's comment count
       dispatch(incrementCommentsCount(postId));
@@ -122,7 +122,7 @@ const PostDetailPage = () => {
 
   const handleReply = async (parentCommentId, content) => {
     try {
-      const result = await dispatch(createComment({ postId, content, parentCommentId })).unwrap();
+      const result = await dispatch(createComment({ postId, body: content, parentCommentId })).unwrap();
       // Update the post's comment count
       dispatch(incrementCommentsCount(postId));
     } catch (error) {

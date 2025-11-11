@@ -20,15 +20,17 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
   const {
     _id,
     title,
-    content,
-    author,
-    community,
+    body,
+    author_id: author,
+    community_id: community,
     upvotes = [],
     downvotes = [],
-    commentsCount = 0,
+    num_comments = 0,
     createdAt,
     type = 'text',
-    media
+    media,
+    url,
+    score = 0
   } = post;
 
   // Get community data from Redux state instead of post's embedded data
@@ -66,7 +68,7 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
     const updatedCommunity = {
       ...effectiveCommunityData,
       members: updatedMembers,
-      memberCount: updatedMembers.length
+      members_count: updatedMembers.length
     };
 
     // Dispatch optimistic update
@@ -123,7 +125,7 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
     if (navigator.share) {
       navigator.share({
         title: title,
-        text: content,
+        text: type === 'link' ? url : body,
         url: postUrl,
       });
     } else {
@@ -157,8 +159,6 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
     setIsShareModalOpen(false);
   };
 
-  const score = upvotes.length - downvotes.length;
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -173,19 +173,19 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
             <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
               <Avatar className="h-5 w-5 sm:h-6 sm:w-6">
                 <AvatarImage src={effectiveCommunityData?.avatar?.secure_url || community?.avatar?.secure_url} />
-                <AvatarFallback>{(effectiveCommunityData?.name || community?.name || 'C')[0]?.toUpperCase()}</AvatarFallback>
+                <AvatarFallback>{(effectiveCommunityData?.name || community?.title || 'C')[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
               <span className="font-medium hover:text-orange-600 cursor-pointer transition-colors">
-                g/{effectiveCommunityData?.name || community?.name}
+                g/{effectiveCommunityData?.title || community?.title}
               </span>
               <span>•</span>
               <span>Posted by</span>
               <Avatar className="h-4 w-4 sm:h-5 sm:w-5">
                 <AvatarImage src={author?.avatar?.secure_url} />
-                <AvatarFallback>{author?.fullName?.[0]?.toUpperCase()}</AvatarFallback>
+                <AvatarFallback>{author?.username?.[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
               <span className="hover:text-orange-600 cursor-pointer transition-colors truncate">
-                u/{author?.fullName}
+                u/{author?.username}
               </span>
               <span>•</span>
               <span className="truncate">{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
@@ -232,7 +232,7 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
 
               {type === 'text' && (
                 <p className="text-gray-700 mb-3 line-clamp-3">
-                  {content}
+                  {body}
                 </p>
               )}
 
@@ -254,14 +254,14 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
                 </video>
               )}
 
-              {type === 'link' && content && (
+              {type === 'link' && url && (
                 <a
-                  href={media?.secure_url}
+                  href={url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:text-blue-800 underline mb-3 block"
                 >
-                  {content}
+                  {url}
                 </a>
               )}
 
@@ -276,12 +276,11 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
                     className="flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full hover:bg-orange-100 transition-all duration-200 group"
                   >
                     <ArrowUp className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500 group-hover:text-orange-500 transition-colors" />
-                    <span className="font-medium text-gray-700 group-hover:text-orange-600 transition-colors">
-                      {upvotes.length}
-                    </span>
                   </motion.button>
 
-                  <div className="w-px h-3 sm:h-4 bg-border mx-1" /> 
+                  <span className="px-2 py-1 text-xs sm:text-sm font-medium min-w-6 text-center text-foreground">
+                    {score}
+                  </span>
 
                   <motion.button
                     whileHover={{ scale: 1.1 }}
@@ -290,9 +289,6 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
                     className="flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full hover:bg-blue-100 transition-all duration-200 group"
                   >
                     <ArrowDown className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500 group-hover:text-blue-500 transition-colors" />
-                    <span className="font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
-                      {downvotes.length}
-                    </span>
                   </motion.button>
                 </div>
 
@@ -302,7 +298,7 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
                   className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-2 rounded-full hover:bg-muted transition-all duration-200 text-muted-foreground hover:text-foreground"
                 >
                   <MessageCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="font-medium">{commentsCount}</span>
+                  <span className="font-medium">{num_comments}</span>
                 </motion.button>
 
                 <motion.button

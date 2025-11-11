@@ -11,7 +11,7 @@ import { logActivity } from "../utils/logActivity.utils.js";
 
 // Create a new post
 export const createPost = asyncHandler(async (req, res) => {
-    const { title, content, communityId, type } = req.body;
+    const { title, body, communityId, type, url, tags } = req.body;
     const author = req.user._id;
 
     if (!title || !communityId) {
@@ -19,8 +19,8 @@ export const createPost = asyncHandler(async (req, res) => {
     }
 
     // Content is required for text and link posts, optional for image/video posts
-    if ((type === 'text' || type === 'link') && !content) {
-        throw new ApiError(400, "Content is required for text and link posts");
+    if ((type === 'text' || type === 'link') && !body) {
+        throw new ApiError(400, "Body is required for text and link posts");
     }
 
     const community = await Community.findById(communityId);
@@ -46,22 +46,29 @@ export const createPost = asyncHandler(async (req, res) => {
 
     const post = await Post.create({
         title,
-        content: content || "", // Default to empty string if not provided
-        author,
-        community: communityId,
+        body: body || "",
+        author_id,
+        community_id: communityId,
         type: type || "text",
-        media
+        media,
+        url: url || "",
+        tags: tags || []
     });
 
-    await post.populate('author', 'fullName avatar');
-    await post.populate('community', 'name');
+    await post.populate('author_id', 'username avatar');
+    await post.populate('community_id', 'title');
 
     await logActivity(
         author,
         "post",
-        `${req.user.fullName} created a post: ${title}`,
-        req
+        `${req.user.username} created a post: ${title}`,
+        req,
+        'post',
+        post._id
     );
+
+    // Increment num_posts for author
+    await User.findByIdAndUpdate(author, { $inc: { num_posts: 1 } });
 
     res.status(201).json(new ApiResponse(201, post, "Post created successfully"));
 });
@@ -72,12 +79,12 @@ export const getAllPosts = asyncHandler(async (req, res) => {
 
     const filter = {};
     if (communityId) {
-        filter.community = communityId;
+        filter.community_id = communityId;
     }
 
     const posts = await Post.find(filter)
-        .populate('author', 'fullName avatar')
-        .populate('community', 'name members')
+        .populate('author_id', 'username avatar')
+        .populate('community_id', 'title members')
         .sort({ [sortBy]: -1 })
         .limit(limit * 1)
         .skip((page - 1) * limit);
@@ -97,14 +104,14 @@ export const getPostsByUser = asyncHandler(async (req, res) => {
     const { userId } = req.params;
     const { page = 1, limit = 10, sortBy = "createdAt" } = req.query;
 
-    const posts = await Post.find({ author: userId })
-        .populate('author', 'fullName avatar')
-        .populate('community', 'name members')
+    const posts = await Post.find({ author_id: userId })
+        .populate('author_id', 'username avatar')
+        .populate('community_id', 'title members')
         .sort({ [sortBy]: -1 })
         .limit(limit * 1)
         .skip((page - 1) * limit);
 
-    const totalPosts = await Post.countDocuments({ author: userId });
+    const totalPosts = await Post.countDocuments({ author_id: userId });
 
     res.status(200).json(new ApiResponse(200, {
         posts,
@@ -119,10 +126,10 @@ export const getPostById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     const post = await Post.findById(id)
-        .populate('author', 'fullName avatar')
-        .populate('community', 'name members')
-        .populate('upvotes', 'fullName')
-        .populate('downvotes', 'fullName');
+        .populate('author_id', 'username avatar')
+        .populate('community_id', 'title members')
+        .populate('upvotes', 'username')
+        .populate('downvotes', 'username');
 
     if (!post) {
         throw new ApiError(404, "Post not found");
@@ -134,7 +141,7 @@ export const getPostById = asyncHandler(async (req, res) => {
 // Update post (only author)
 export const updatePost = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { title, content } = req.body;
+    const { title, body } = req.body;
     const userId = req.user._id;
 
     const post = await Post.findById(id);
@@ -142,22 +149,24 @@ export const updatePost = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Post not found");
     }
 
-    if (post.author.toString() !== userId.toString()) {
+    if (post.author_id.toString() !== userId.toString()) {
         throw new ApiError(403, "Only author can update post");
     }
 
     post.title = title || post.title;
-    post.content = content || post.content;
+    post.body = body || post.body;
 
     await post.save();
-    await post.populate('author', 'fullName avatar');
-    await post.populate('community', 'name');
+    await post.populate('author_id', 'username avatar');
+    await post.populate('community_id', 'title');
 
     await logActivity(
         userId,
         "update-post",
-        `${req.user.fullName} updated post: ${post.title}`,
-        req
+        `${req.user.username} updated post: ${post.title}`,
+        req,
+        'post',
+        id
     );
 
     res.status(200).json(new ApiResponse(200, post, "Post updated successfully"));
@@ -168,26 +177,41 @@ export const deletePost = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const post = await Post.findById(id).populate('community');
+    const post = await Post.findById(id).populate('community_id');
     if (!post) {
         throw new ApiError(404, "Post not found");
     }
 
-    const isAuthor = post.author.toString() === userId.toString();
-    const isModerator = post.community.moderators.includes(userId);
+    const isAuthor = post.author_id.toString() === userId.toString();
+    const isModerator = post.community_id.moderators.includes(userId);
 
     if (!isAuthor && !isModerator) {
         throw new ApiError(403, "Only author or moderator can delete post");
     }
 
+    // If author deletes, set status to removed and clear body
+    if (isAuthor) {
+        post.status = 'removed';
+        post.body = '';
+        await post.save();
+    } else {
+        // Moderator deletes, actually delete
+        await Post.findByIdAndDelete(id);
+    }
+
     await logActivity(
         userId,
         "delete-post",
-        `${req.user.fullName} deleted post: ${post.title}`,
-        req
+        `${req.user.username} deleted post: ${post.title}`,
+        req,
+        'post',
+        id
     );
 
-    await Post.findByIdAndDelete(id);
+    // Decrement num_posts if author deleted
+    if (isAuthor) {
+        await User.findByIdAndUpdate(userId, { $inc: { num_posts: -1 } });
+    }
 
     res.status(200).json(new ApiResponse(200, null, "Post deleted successfully"));
 });
@@ -197,7 +221,7 @@ export const upvotePost = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const post = await Post.findById(id).populate('author');
+    const post = await Post.findById(id).populate('author_id');
     if (!post) {
         throw new ApiError(404, "Post not found");
     }
@@ -219,24 +243,29 @@ export const upvotePost = asyncHandler(async (req, res) => {
         await logActivity(
             userId,
             "upvote",
-            `${req.user.fullName} upvoted post`,
-            req
+            `${req.user.username} upvoted post`,
+            req,
+            'post',
+            id
         );
 
         // Create notification if not self-vote
-        if (post.author._id.toString() !== userId.toString()) {
+        if (post.author_id.toString() !== userId.toString()) {
             notification = await Notification.create({
-                user: post.author._id,
+                user: post.author_id,
                 type: "upvote",
-                message: `${req.user.fullName} upvoted your post`,
+                message: `${req.user.username} upvoted your post`,
                 relatedPost: id
             });
         }
     }
 
+    // Calculate score
+    post.score = Math.floor((post.upvotes.length - post.downvotes.length) / 2);
+
     await post.save();
-    await post.populate('upvotes', 'fullName');
-    await post.populate('downvotes', 'fullName');
+    await post.populate('upvotes', 'username');
+    await post.populate('downvotes', 'username');
 
     // Emit vote update to post room
     global.io.to(`post_${id}`).emit('vote-updated', {
@@ -247,7 +276,7 @@ export const upvotePost = asyncHandler(async (req, res) => {
 
     // Emit notification if created
     if (notification) {
-        global.io.to(`user_${post.author._id}`).emit('new-notification', notification);
+        global.io.to(`user_${post.author_id}`).emit('new-notification', notification);
     }
 
     res.status(200).json(new ApiResponse(200, post, "Post upvoted successfully"));
@@ -258,7 +287,7 @@ export const downvotePost = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const post = await Post.findById(id).populate('author');
+    const post = await Post.findById(id).populate('author_id');
     if (!post) {
         throw new ApiError(404, "Post not found");
     }
@@ -280,24 +309,29 @@ export const downvotePost = asyncHandler(async (req, res) => {
         await logActivity(
             userId,
             "downvote",
-            `${req.user.fullName} downvoted post`,
-            req
+            `${req.user.username} downvoted post`,
+            req,
+            'post',
+            id
         );
 
         // Create notification if not self-vote
-        if (post.author._id.toString() !== userId.toString()) {
+        if (post.author_id.toString() !== userId.toString()) {
             notification = await Notification.create({
-                user: post.author._id,
+                user: post.author_id,
                 type: "downvote",
-                message: `${req.user.fullName} downvoted your post`,
+                message: `${req.user.username} downvoted your post`,
                 relatedPost: id
             });
         }
     }
 
+    // Calculate score
+    post.score = Math.floor((post.upvotes.length - post.downvotes.length) / 2);
+
     await post.save();
-    await post.populate('upvotes', 'fullName');
-    await post.populate('downvotes', 'fullName');
+    await post.populate('upvotes', 'username');
+    await post.populate('downvotes', 'username');
 
     // Emit vote update to post room
     global.io.to(`post_${id}`).emit('vote-updated', {
@@ -308,7 +342,7 @@ export const downvotePost = asyncHandler(async (req, res) => {
 
     // Emit notification if created
     if (notification) {
-        global.io.to(`user_${post.author._id}`).emit('new-notification', notification);
+        global.io.to(`user_${post.author_id}`).emit('new-notification', notification);
     }
 
     res.status(200).json(new ApiResponse(200, post, "Post downvoted successfully"));
@@ -341,8 +375,10 @@ export const savePost = asyncHandler(async (req, res) => {
     await logActivity(
         userId,
         "save-post",
-        `${req.user.fullName} saved post`,
-        req
+        `${req.user.username} saved post`,
+        req,
+        'post',
+        id
     );
 
     res.status(200).json(new ApiResponse(200, null, "Post saved successfully"));
@@ -375,8 +411,10 @@ export const unsavePost = asyncHandler(async (req, res) => {
     await logActivity(
         userId,
         "unsave-post",
-        `${req.user.fullName} unsaved post`,
-        req
+        `${req.user.username} unsaved post`,
+        req,
+        'post',
+        id
     );
 
     res.status(200).json(new ApiResponse(200, null, "Post unsaved successfully"));
@@ -404,8 +442,8 @@ export const getSavedPosts = asyncHandler(async (req, res) => {
     }
 
     const posts = await Post.find({ _id: { $in: savedPostIds } })
-        .populate('author', 'fullName avatar')
-        .populate('community', 'name members')
+        .populate('author_id', 'username avatar')
+        .populate('community_id', 'title members')
         .sort({ createdAt: -1 })
         .limit(limit * 1)
         .skip((page - 1) * limit);

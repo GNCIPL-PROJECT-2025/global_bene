@@ -10,19 +10,28 @@ const communitySchema = new Schema({
         minlength: [3, "Community name must be at least 3 characters long"],
         maxlength: [50, "Community name cannot be more than 50 characters"]
     },
+    title: {
+        type: String,
+        required: true,
+        unique: true,
+        lowercase: true,
+        trim: true,
+        minlength: [3, "Community title must be at least 3 characters long"],
+        maxlength: [50, "Community title cannot be more than 50 characters"]
+    },
     description: {
         type: String,
         required: true,
         maxlength: [500, "Description cannot be more than 500 characters"]
     },
     // In community.model.js
-    creator: {
+    creator_id: {
         _id: {
             type: Schema.Types.ObjectId,
             ref: "User",
             required: true
         },
-        fullName: {
+        username: {
             type: String,
             required: true
         },
@@ -51,11 +60,11 @@ const communitySchema = new Schema({
         title: String,
         description: String
     }],
-    isPrivate: {
+    is_private: {
         type: Boolean,
         default: false
     },
-    memberCount: {
+    members_count: {
         type: Number,
         default: 0
     }

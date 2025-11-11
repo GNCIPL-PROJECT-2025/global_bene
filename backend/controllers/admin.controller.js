@@ -51,7 +51,7 @@ const getOneUser = asyncHandler(async (req, res, next) => {
 // *Update Profile
 const adminUpdateUserProfile = asyncHandler(async (req, res, next) => {
     const userId = req.params?.id
-    const { fullName, email, phone, gender, social_links = {} } = req.body
+    const { username, email, phone, gender, social_links = {} } = req.body
     console.log("req.body[registerUser]:\n", req.body)
 
     const requiredFields = [email, phone]
@@ -61,7 +61,7 @@ const adminUpdateUserProfile = asyncHandler(async (req, res, next) => {
     // console.log("Check Fields", checkFields)
 
     // *Required Fields_____________________________________________
-    if (!fullName || !email || !phone) {
+    if (!username || !email || !phone) {
         console.error("emptyError")
         return next(new ErrorHandler("All Fields are required", 400))
     }
@@ -119,7 +119,7 @@ const adminUpdateUserProfile = asyncHandler(async (req, res, next) => {
 
     const updatedUser = await User.findByIdAndUpdate(
         userId,
-        { fullName, email, phone, gender, social_links },
+        { username, email, phone, gender, social_links },
         { new: true, runValidators: true }
     ).select("-password -refreshToken");
 
@@ -130,8 +130,10 @@ const adminUpdateUserProfile = asyncHandler(async (req, res, next) => {
     await logActivity(
         req.user._id,
         "admin-update-profile",
-        `Admin ${req.user.fullName} updated profile for ${updatedUser.fullName}`,
-        req
+        `Admin ${req.user.username} updated profile for ${updatedUser.username}`,
+        req,
+        'user',
+        updatedUser._id
     );
 
     return res.status(200).json({
@@ -195,7 +197,9 @@ const adminUpdateUserAvatar = asyncHandler(async (req, res, next) => {
         req.user._id,
         "admin-update-avatar",
         `Admin ${req.user.fullName} updated avatar for ${updatedUser.fullName}`,
-        req
+        req,
+        'user',
+        updatedUser._id
     );
 
     console.log("NEW URL: ", newAvatar);
@@ -228,7 +232,9 @@ const adminDeleteUser = asyncHandler(async (req, res, next) => {
             req.user._id,
             "admin-delete-user",
             `Admin ${req.user.fullName} deleted user ${user.fullName}`,
-            req
+            req,
+            'user',
+            userId
         );
 
         // *Delete the previous file

@@ -12,9 +12,9 @@ import {
 // Async thunks
 export const createComment = createAsyncThunk(
   'comment/createComment',
-  async ({ postId, content, parentCommentId }, { rejectWithValue }) => {
+  async ({ postId, body, parentCommentId }, { rejectWithValue }) => {
     try {
-      const response = await createCommentApi({ content, postId, parentCommentId });
+      const response = await createCommentApi({ body, postId, parentCommentId });
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to create comment');
@@ -120,18 +120,18 @@ const commentSlice = createSlice({
       if (state.repliesByComment[commentId]) {
         state.repliesByComment[commentId].replies.push(reply);
       }
-      // Update the parent comment's repliesCount
+      // Update the parent comment's replies_count
       Object.keys(state.commentsByPost).forEach(postId => {
         const index = state.commentsByPost[postId].comments.findIndex(c => c._id === commentId);
         if (index !== -1) {
-          state.commentsByPost[postId].comments[index].repliesCount = (state.commentsByPost[postId].comments[index].repliesCount || 0) + 1;
+          state.commentsByPost[postId].comments[index].replies_count = (state.commentsByPost[postId].comments[index].replies_count || 0) + 1;
         }
       });
       // Also check in replies (for nested replies)
       Object.keys(state.repliesByComment).forEach(parentId => {
         const index = state.repliesByComment[parentId].replies.findIndex(r => r._id === commentId);
         if (index !== -1) {
-          state.repliesByComment[parentId].replies[index].repliesCount = (state.repliesByComment[parentId].replies[index].repliesCount || 0) + 1;
+          state.repliesByComment[parentId].replies[index].replies_count = (state.repliesByComment[parentId].replies[index].replies_count || 0) + 1;
         }
       });
     },
@@ -144,29 +144,29 @@ const commentSlice = createSlice({
       // Check if comment already exists to prevent duplicates
       const existingCommentIndex = state.commentsByPost[postId].comments.findIndex(c => c._id === comment._id);
 
-      if (comment.parentComment) {
+      if (comment.parent_id) {
         // It's a reply
-        if (!state.repliesByComment[comment.parentComment]) {
-          state.repliesByComment[comment.parentComment] = { replies: [], loading: false, error: null };
+        if (!state.repliesByComment[comment.parent_id]) {
+          state.repliesByComment[comment.parent_id] = { replies: [], loading: false, error: null };
         }
 
         // Check if reply already exists
-        const existingReplyIndex = state.repliesByComment[comment.parentComment].replies.findIndex(r => r._id === comment._id);
+        const existingReplyIndex = state.repliesByComment[comment.parent_id].replies.findIndex(r => r._id === comment._id);
 
         if (existingReplyIndex === -1) {
-          state.repliesByComment[comment.parentComment].replies.unshift(comment);
-          // Update the parent comment's repliesCount
+          state.repliesByComment[comment.parent_id].replies.unshift(comment);
+          // Update the parent comment's replies_count
           Object.keys(state.commentsByPost).forEach(postId => {
-            const index = state.commentsByPost[postId].comments.findIndex(c => c._id === comment.parentComment);
+            const index = state.commentsByPost[postId].comments.findIndex(c => c._id === comment.parent_id);
             if (index !== -1) {
-              state.commentsByPost[postId].comments[index].repliesCount = (state.commentsByPost[postId].comments[index].repliesCount || 0) + 1;
+              state.commentsByPost[postId].comments[index].replies_count = (state.commentsByPost[postId].comments[index].replies_count || 0) + 1;
             }
           });
           // Also check in replies (for nested replies)
           Object.keys(state.repliesByComment).forEach(parentId => {
-            const index = state.repliesByComment[parentId].replies.findIndex(r => r._id === comment.parentComment);
+            const index = state.repliesByComment[parentId].replies.findIndex(r => r._id === comment.parent_id);
             if (index !== -1) {
-              state.repliesByComment[parentId].replies[index].repliesCount = (state.repliesByComment[parentId].replies[index].repliesCount || 0) + 1;
+              state.repliesByComment[parentId].replies[index].replies_count = (state.repliesByComment[parentId].replies[index].replies_count || 0) + 1;
             }
           });
         }
@@ -206,18 +206,18 @@ const commentSlice = createSlice({
       const { commentId, replyId } = action.payload;
       if (state.repliesByComment[commentId]) {
         state.repliesByComment[commentId].replies = state.repliesByComment[commentId].replies.filter(r => r._id !== replyId);
-        // Update the parent comment's repliesCount
+        // Update the parent comment's replies_count
         Object.keys(state.commentsByPost).forEach(postId => {
           const index = state.commentsByPost[postId].comments.findIndex(c => c._id === commentId);
           if (index !== -1) {
-            state.commentsByPost[postId].comments[index].repliesCount = Math.max((state.commentsByPost[postId].comments[index].repliesCount || 0) - 1, 0);
+            state.commentsByPost[postId].comments[index].replies_count = Math.max((state.commentsByPost[postId].comments[index].replies_count || 0) - 1, 0);
           }
         });
         // Also check in replies (for nested replies)
         Object.keys(state.repliesByComment).forEach(parentId => {
           const index = state.repliesByComment[parentId].replies.findIndex(r => r._id === commentId);
           if (index !== -1) {
-            state.repliesByComment[parentId].replies[index].repliesCount = Math.max((state.repliesByComment[parentId].replies[index].repliesCount || 0) - 1, 0);
+            state.repliesByComment[parentId].replies[index].replies_count = Math.max((state.repliesByComment[parentId].replies[index].replies_count || 0) - 1, 0);
           }
         });
       }
@@ -233,31 +233,31 @@ const commentSlice = createSlice({
       .addCase(createComment.fulfilled, (state, action) => {
         state.loading = false;
         const newComment = action.payload;
-        const postId = newComment.post;
+        const postId = newComment.post_id;
         if (!state.commentsByPost[postId]) {
           state.commentsByPost[postId] = { comments: [], loading: false, error: null };
         }
-        if (newComment.parentComment) {
+        if (newComment.parent_id) {
           // It's a reply
-          if (!state.repliesByComment[newComment.parentComment]) {
-            state.repliesByComment[newComment.parentComment] = { replies: [], loading: false, error: null };
+          if (!state.repliesByComment[newComment.parent_id]) {
+            state.repliesByComment[newComment.parent_id] = { replies: [], loading: false, error: null };
           }
           // Check if reply already exists
-          const existingReplyIndex = state.repliesByComment[newComment.parentComment].replies.findIndex(r => r._id === newComment._id);
+          const existingReplyIndex = state.repliesByComment[newComment.parent_id].replies.findIndex(r => r._id === newComment._id);
           if (existingReplyIndex === -1) {
-            state.repliesByComment[newComment.parentComment].replies.unshift(newComment);
-            // Update the parent comment's repliesCount
+            state.repliesByComment[newComment.parent_id].replies.unshift(newComment);
+            // Update the parent comment's replies_count
             Object.keys(state.commentsByPost).forEach(postId => {
-              const index = state.commentsByPost[postId].comments.findIndex(c => c._id === newComment.parentComment);
+              const index = state.commentsByPost[postId].comments.findIndex(c => c._id === newComment.parent_id);
               if (index !== -1) {
-                state.commentsByPost[postId].comments[index].repliesCount = (state.commentsByPost[postId].comments[index].repliesCount || 0) + 1;
+                state.commentsByPost[postId].comments[index].replies_count = (state.commentsByPost[postId].comments[index].replies_count || 0) + 1;
               }
             });
             // Also check in replies (for nested replies)
             Object.keys(state.repliesByComment).forEach(parentId => {
-              const index = state.repliesByComment[parentId].replies.findIndex(r => r._id === newComment.parentComment);
+              const index = state.repliesByComment[parentId].replies.findIndex(r => r._id === newComment.parent_id);
               if (index !== -1) {
-                state.repliesByComment[parentId].replies[index].repliesCount = (state.repliesByComment[parentId].replies[index].repliesCount || 0) + 1;
+                state.repliesByComment[parentId].replies[index].replies_count = (state.repliesByComment[parentId].replies[index].replies_count || 0) + 1;
               }
             });
           }

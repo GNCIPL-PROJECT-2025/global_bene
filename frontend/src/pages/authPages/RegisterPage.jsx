@@ -12,7 +12,7 @@ import { register, clearError } from '../../redux/slice/auth.slice';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
-    fullName: '',
+    username: '',
     email: '',
     phone: '',
     password: '',
@@ -58,10 +58,10 @@ const RegisterPage = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
-    } else if (formData.fullName.trim().length < 4) {
-      newErrors.fullName = 'Full name must be at least 4 characters';
+    if (!formData.username.trim()) {
+      newErrors.username = 'Username is required';
+    } else if (formData.username.trim().length < 4) {
+      newErrors.username = 'Username must be at least 4 characters';
     }
 
     if (!formData.email) {
@@ -131,22 +131,22 @@ const RegisterPage = () => {
 
           <CardContent className="pt-4">
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Full Name */}
+              {/* Username */}
               <div className="space-y-2">
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 h-4 w-4" />
                   <Input
-                    id="fullName"
-                    name="fullName"
+                    id="username"
+                    name="username"
                     type="text"
-                    placeholder="Full name"
-                    value={formData.fullName}
+                    placeholder="Username"
+                    value={formData.username}
                     onChange={handleChange}
-                    className={`pl-10 h-11 ${errors.fullName ? 'border-red-500 focus:border-red-500' : 'border-gray-300 dark:border-gray-600 focus:border-orange-500'}`}
+                    className={`pl-10 h-11 ${errors.username ? 'border-red-500 focus:border-red-500' : 'border-gray-300 dark:border-gray-600 focus:border-orange-500'}`}
                   />
                 </div>
-                {errors.fullName && (
-                  <p className="text-sm text-red-500">{errors.fullName}</p>
+                {errors.username && (
+                  <p className="text-sm text-red-500">{errors.username}</p>
                 )}
               </div>
 

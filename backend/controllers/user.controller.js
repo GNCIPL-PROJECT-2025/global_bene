@@ -113,11 +113,11 @@ const refreshAccessToken = asyncHandler(async (req, res, next) => {
 
 // *Register Route
 const registerUser = asyncHandler(async (req, res, next) => {
-    const { fullName, email, phone, password, gender } = req.body;
+    const { username, email, phone, password, gender } = req.body;
     
-    console.log("Registration data received:", { fullName, email, phone, password: "***", gender });
+    console.log("Registration data received:", { username, email, phone, password: "***", gender });
     
-    const requiredFields = [fullName, email, phone, password]
+    const requiredFields = [username, email, phone, password]
     const checkFields = { email, phone }
 
     if (requiredFields.some((field) => !field || field.trim() === "")) return next(new ErrorHandler("All fields are required", 400))
@@ -134,7 +134,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
 
     try {
         const user = await User.create({
-            fullName, 
+            username, 
             email, 
             phone, 
             password,
@@ -144,8 +144,10 @@ const registerUser = asyncHandler(async (req, res, next) => {
         await logActivity(
             user._id,
             "register",
-            `${user.fullName} registered`,
-            req
+            `${user.username} registered`,
+            req,
+            'user',
+            user._id
         );
     } catch (error) {
         console.error("User creation error:", error);
@@ -178,8 +180,10 @@ const loginUser = asyncHandler(async (req, res, next) => {
         await logActivity(
             user._id,
             "login",
-            `${user.fullName} logged in`,
-            req
+            `${user.username} logged in`,
+            req,
+            'user',
+            user._id
         );
     } catch (error) {
         return next(new ErrorHandler(`Something went wrong..details - ${error.message}`, 500))
@@ -204,13 +208,15 @@ const logoutUser = asyncHandler(async (req, res, next) => {
                 {
                     new: true
                 }
-            ).select("fullName");
+            ).select("username");
      
             await logActivity(
                 req.user._id,
                 "logout",
-                `${user.fullName} logged out`,
-                req
+                `${user.username} logged out`,
+                req,
+                'user',
+                req.user._id
             );
         } catch (error) {
         }
@@ -308,8 +314,10 @@ const verifyOtpForUser = asyncHandler(async (req, res, next) => {
     await logActivity(
         user._id,
         "verify-otp",
-        `${user.fullName} verified OTP`,
-        req
+        `${user.username} verified OTP`,
+        req,
+        'user',
+        user._id
     );
 
     const options = {
@@ -419,14 +427,16 @@ const resetPassword = asyncHandler(async (req, res, next) => {
     await logActivity(
         user._id,
         "reset-password",
-        `${user.fullName} reset password`,
-        req
+        `${user.username} reset password`,
+        req,
+        'user',
+        user._id
     );
 
     return res.status(200).
         json({
             success: true,
-            message: `Password for ${user.fullName} changed!`,
+            message: `Password for ${user.username} changed!`,
         })
 })
 
@@ -464,8 +474,10 @@ const changeCurrentPassword = asyncHandler(async (req, res, next) => {
     await logActivity(
         req.user._id,
         "change-password",
-        `${user.fullName} changed password`,
-        req
+        `${user.username} changed password`,
+        req,
+        'user',
+        req.user._id
     );
 
     return res.status(200).json({
@@ -479,17 +491,17 @@ const changeCurrentPassword = asyncHandler(async (req, res, next) => {
 // *Update Profile User
 const updateUserProfile = asyncHandler(async (req, res, next) => {
     const userId = req.user?._id
-    const { fullName, email, phone, gender, bio, social_links = {} } = req.body
+    const { username, email, phone, gender, bio, social_links = {} } = req.body
 
     console.log('Backend: Updating user profile for ID:', userId);
-    console.log('Backend: Update data received:', { fullName, email, phone, gender, bio, social_links });
+    console.log('Backend: Update data received:', { username, email, phone, gender, bio, social_links });
 
     const requiredFields = [email, phone]
 
     const checkFields = { email, phone }
 
     // *Required Fields_____________________________________________
-    if (!fullName || !email || !phone) {
+    if (!username || !email || !phone) {
         return next(new ErrorHandler("All Fields are required", 400))
     }
 
@@ -544,7 +556,7 @@ const updateUserProfile = asyncHandler(async (req, res, next) => {
 
     const updatedUser = await User.findByIdAndUpdate(
         userId,
-        { fullName, email, phone, gender, bio, social_links },
+        { username, email, phone, gender, bio, social_links },
         { new: true, runValidators: true }
     ).select("-password -refreshToken");
 
@@ -610,8 +622,10 @@ const updateUserAvatar = asyncHandler(async (req, res, next) => {
         await logActivity(
             req.user._id,
             "avatar",
-            `${updatedUser.fullName} updated avatar`,
-            req
+            `${updatedUser.username} updated avatar`,
+            req,
+            'user',
+            req.user._id
         );
 
         return res
@@ -637,18 +651,18 @@ const getLoggedInUserInfo = asyncHandler(async (req, res, next) => {
     // Calculate stats
     const [postsCount, commentsCount, upvotesCount, downvotesCount, communitiesCount] = await Promise.all([
         // Count posts by user
-        mongoose.model('Post').countDocuments({ author: userId }),
+        mongoose.model('Post').countDocuments({ author_id: userId }),
         // Count comments by user
-        mongoose.model('Comment').countDocuments({ author: userId }),
+        mongoose.model('Comment').countDocuments({ author_id: userId }),
         // Count upvotes received on user's posts and comments
         Promise.all([
             mongoose.model('Post').aggregate([
-                { $match: { author: userId } },
+                { $match: { author_id: userId } },
                 { $project: { upvotesCount: { $size: "$upvotes" } } },
                 { $group: { _id: null, total: { $sum: "$upvotesCount" } } }
             ]),
             mongoose.model('Comment').aggregate([
-                { $match: { author: userId } },
+                { $match: { author_id: userId } },
                 { $project: { upvotesCount: { $size: "$upvotes" } } },
                 { $group: { _id: null, total: { $sum: "$upvotesCount" } } }
             ])
@@ -660,12 +674,12 @@ const getLoggedInUserInfo = asyncHandler(async (req, res, next) => {
         // Count downvotes received on user's posts and comments
         Promise.all([
             mongoose.model('Post').aggregate([
-                { $match: { author: userId } },
+                { $match: { author_id: userId } },
                 { $project: { downvotesCount: { $size: "$downvotes" } } },
                 { $group: { _id: null, total: { $sum: "$downvotesCount" } } }
             ]),
             mongoose.model('Comment').aggregate([
-                { $match: { author: userId } },
+                { $match: { author_id: userId } },
                 { $project: { downvotesCount: { $size: "$downvotes" } } },
                 { $group: { _id: null, total: { $sum: "$downvotesCount" } } }
             ])
@@ -710,8 +724,10 @@ const deleteUser = asyncHandler(async (req, res, next) => {
         await logActivity(
             req.user._id,
             "delete-user",
-            `${user.fullName} deleted account`,
-            req
+            `${user.username} deleted account`,
+            req,
+            'user',
+            userId
         );
 
         // Delete the user

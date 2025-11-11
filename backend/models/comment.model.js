@@ -1,25 +1,29 @@
 import mongoose, { Schema } from "mongoose";
 
 const commentSchema = new Schema({
-    content: {
+    body: {
         type: String,
         required: true,
         maxlength: [1000, "Comment cannot be more than 1000 characters"]
     },
-    author: {
+    author_id: {
         type: Schema.Types.ObjectId,
         ref: "User",
         required: true
     },
-    post: {
+    post_id: {
         type: Schema.Types.ObjectId,
         ref: "Post",
         required: true
     },
-    parentComment: {
+    parent_id: {
         type: Schema.Types.ObjectId,
         ref: "Comment",
         default: null
+    },
+    path: {
+        type: String,
+        required: true
     },
     upvotes: [{
         type: Schema.Types.ObjectId,
@@ -29,7 +33,16 @@ const commentSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "User"
     }],
-    repliesCount: {
+    replies_count: {
+        type: Number,
+        default: 0
+    },
+    status: {
+        type: String,
+        enum: ['flagged', 'removed', 'active'],
+        default: 'active'
+    },
+    score: {
         type: Number,
         default: 0
     }

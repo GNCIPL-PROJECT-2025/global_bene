@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { loginUser as loginApi, registerUser as registerApi, logoutUser as logoutApi, googleLogin as googleLoginApi } from '../../api/auth.api';
+import { loginUser as loginApi, registerUser as registerApi, logoutUser as logoutApi, sendOtp as sendOtpApi, verifyOtp as verifyOtpApi, sendResetPasswordLink as sendResetPasswordLinkApi, googleLogin as googleLoginApi } from '../../api/auth.api';
 import { getCurrentUser } from '../../api/user.api';
 
 // Async thunks
@@ -62,6 +62,44 @@ export const googleLogin = createAsyncThunk(
       googleLoginApi(); // This will redirect to Google
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Google login failed');
+    }
+  }
+);
+
+export const sendOtp = createAsyncThunk(
+  'auth/sendOtp',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await sendOtpApi();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to send OTP');
+    }
+  }
+);
+
+export const verifyOtp = createAsyncThunk(
+  'auth/verifyOtp',
+  async (otpData, { rejectWithValue, dispatch }) => {
+    try {
+      const response = await verifyOtpApi(otpData);
+      // After successful verification, fetch complete user profile with stats
+      const userData = await getCurrentUser();
+      return { ...response, user: userData.user || userData };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'OTP verification failed');
+    }
+  }
+);
+
+export const sendResetPasswordLink = createAsyncThunk(
+  'auth/sendResetPasswordLink',
+  async (emailData, { rejectWithValue }) => {
+    try {
+      const response = await sendResetPasswordLinkApi(emailData);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to send reset password link');
     }
   }
 );
@@ -151,6 +189,45 @@ const authSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = false;
         state.user = null;
+      })
+      // Send OTP
+      .addCase(sendOtp.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(sendOtp.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(sendOtp.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Verify OTP
+      .addCase(verifyOtp.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(verifyOtp.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.user;
+        state.isAuthenticated = true;
+      })
+      .addCase(verifyOtp.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.isAuthenticated = false;
+      })
+      // Send reset password link
+      .addCase(sendResetPasswordLink.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(sendResetPasswordLink.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(sendResetPasswordLink.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });

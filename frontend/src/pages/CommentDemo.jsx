@@ -7,7 +7,7 @@ const CommentDemo = () => {
   const sampleComments = [
     {
       _id: '1',
-      content: 'This is a fantastic post! I really appreciate the detailed explanation and the modern design approach. The animations are smooth and the overall user experience feels very polished.',
+      body: 'This is a fantastic post! I really appreciate the detailed explanation and the modern design approach. The animations are smooth and the overall user experience feels very polished.',
       author: {
         _id: 'user1',
         fullName: 'John Doe',
@@ -18,12 +18,12 @@ const CommentDemo = () => {
       },
       upvotes: ['user2', 'user3', 'user4'],
       downvotes: [],
-      repliesCount: 2,
+      replies_count: 2,
       createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() // 2 hours ago
     },
     {
       _id: '2',
-      content: 'Great work on the redesign! The card-based layout makes it much easier to read through comments. The voting system is intuitive and the reply functionality is seamless.',
+      body: 'Great work on the redesign! The card-based layout makes it much easier to read through comments. The voting system is intuitive and the reply functionality is seamless.',
       author: {
         _id: 'user2',
         fullName: 'Sarah Wilson',
@@ -34,12 +34,12 @@ const CommentDemo = () => {
       },
       upvotes: ['user1', 'user3'],
       downvotes: ['user5'],
-      repliesCount: 1,
+      replies_count: 1,
       createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString() // 45 minutes ago
     },
     {
       _id: '3',
-      content: 'I love the progressive indentation for nested replies. It makes the conversation flow much more natural and easier to follow.',
+      body: 'I love the progressive indentation for nested replies. It makes the conversation flow much more natural and easier to follow.',
       author: {
         _id: 'user3',
         fullName: 'Mike Chen',
@@ -50,12 +50,12 @@ const CommentDemo = () => {
       },
       upvotes: ['user1', 'user2', 'user4', 'user5'],
       downvotes: [],
-      repliesCount: 0,
+      replies_count: 0,
       createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString() // 15 minutes ago
     },
     {
       _id: '4',
-      content: 'The dark mode support is excellent! All the colors transition smoothly and maintain great contrast.',
+      body: 'The dark mode support is excellent! All the colors transition smoothly and maintain great contrast.',
       author: {
         _id: 'user4',
         fullName: 'Emma Thompson',
@@ -66,7 +66,7 @@ const CommentDemo = () => {
       },
       upvotes: ['user1'],
       downvotes: [],
-      repliesCount: 0,
+      replies_count: 0,
       createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString() // 5 minutes ago
     }
   ];

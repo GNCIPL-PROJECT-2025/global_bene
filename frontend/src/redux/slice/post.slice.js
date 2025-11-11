@@ -102,7 +102,7 @@ export const savePost = createAsyncThunk(
   'post/savePost',
   async (postId, { rejectWithValue, dispatch, getState }) => {
     try {
-      const response = await savePostApi(postId);
+      await savePostApi(postId);
       // Update user's saved posts in auth state
       const { auth } = getState();
       if (auth.user) {
@@ -120,7 +120,7 @@ export const unsavePost = createAsyncThunk(
   'post/unsavePost',
   async (postId, { rejectWithValue, dispatch, getState }) => {
     try {
-      const response = await unsavePostApi(postId);
+      await unsavePostApi(postId);
       // Update user's saved posts in auth state
       const { auth } = getState();
       if (auth.user) {
@@ -185,17 +185,19 @@ const postSlice = createSlice({
       }
     },
     updatePostVotes: (state, action) => {
-      const { postId, upvotes, downvotes } = action.payload;
+      const { postId, upvotes, downvotes, score } = action.payload;
       // Update in posts list
       const postIndex = state.posts.findIndex(post => post._id === postId);
       if (postIndex !== -1) {
         state.posts[postIndex].upvotes = upvotes;
         state.posts[postIndex].downvotes = downvotes;
+        if (score !== undefined) state.posts[postIndex].score = score;
       }
       // Update current post
       if (state.currentPost && state.currentPost._id === postId) {
         state.currentPost.upvotes = upvotes;
         state.currentPost.downvotes = downvotes;
+        if (score !== undefined) state.currentPost.score = score;
       }
     },
     incrementCommentsCount: (state, action) => {
@@ -203,11 +205,11 @@ const postSlice = createSlice({
       // Update in posts list
       const postIndex = state.posts.findIndex(post => post._id === postId);
       if (postIndex !== -1) {
-        state.posts[postIndex].commentsCount = (state.posts[postIndex].commentsCount || 0) + 1;
+        state.posts[postIndex].num_comments = (state.posts[postIndex].num_comments || 0) + 1;
       }
       // Update current post
       if (state.currentPost && state.currentPost._id === postId) {
-        state.currentPost.commentsCount = (state.currentPost.commentsCount || 0) + 1;
+        state.currentPost.num_comments = (state.currentPost.num_comments || 0) + 1;
       }
     },
     decrementCommentsCount: (state, action) => {
@@ -215,11 +217,11 @@ const postSlice = createSlice({
       // Update in posts list
       const postIndex = state.posts.findIndex(post => post._id === postId);
       if (postIndex !== -1) {
-        state.posts[postIndex].commentsCount = Math.max((state.posts[postIndex].commentsCount || 0) - 1, 0);
+        state.posts[postIndex].num_comments = Math.max((state.posts[postIndex].num_comments || 0) - 1, 0);
       }
       // Update current post
       if (state.currentPost && state.currentPost._id === postId) {
-        state.currentPost.commentsCount = Math.max((state.currentPost.commentsCount || 0) - 1, 0);
+        state.currentPost.num_comments = Math.max((state.currentPost.num_comments || 0) - 1, 0);
       }
     }
   },

@@ -61,7 +61,7 @@ export const deleteUserAccount = async () => {
 // Get user posts (placeholder for future implementation)
 export const getUserPosts = async (userId, page = 1, limit = 10) => {
   try {
-    const response = await axiosInstance.get(`/users/${userId}/posts?page=${page}&limit=${limit}`);
+    const response = await axiosInstance.get(`/posts/user/${userId}?page=${page}&limit=${limit}`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error;

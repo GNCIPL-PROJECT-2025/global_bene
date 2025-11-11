@@ -53,11 +53,11 @@ const ProfilePage = () => {
 
   // Mock communities data for sidebar
   const mockCommunities = [
-    { _id: '1', name: 'technology', memberCount: 1250, avatar: { secure_url: '' } },
-    { _id: '2', name: 'photography', memberCount: 890, avatar: { secure_url: '' } },
-    { _id: '3', name: 'gaming', memberCount: 2100, avatar: { secure_url: '' } },
-    { _id: '4', name: 'science', memberCount: 750, avatar: { secure_url: '' } },
-    { _id: '5', name: 'art', memberCount: 620, avatar: { secure_url: '' } }
+    { _id: '1', name: 'technology', members_count: 1250, avatar: { secure_url: '' } },
+    { _id: '2', name: 'photography', members_count: 890, avatar: { secure_url: '' } },
+    { _id: '3', name: 'gaming', members_count: 2100, avatar: { secure_url: '' } },
+    { _id: '4', name: 'science', members_count: 750, avatar: { secure_url: '' } },
+    { _id: '5', name: 'art', members_count: 620, avatar: { secure_url: '' } }
   ];
 
   useEffect(() => {
@@ -202,9 +202,9 @@ const ProfilePage = () => {
               className="flex flex-col md:flex-row items-start md:items-center gap-6"
             >
               <Avatar className="w-24 h-24 md:w-32 md:h-32">
-                <AvatarImage src={user.avatar?.secure_url} alt={user.fullName} />
+                <AvatarImage src={user.avatar?.secure_url} alt={user.username} />
                 <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                  {getInitials(user.fullName)}
+                  {getInitials(user.username)}
                 </AvatarFallback>
               </Avatar>
 
@@ -212,9 +212,9 @@ const ProfilePage = () => {
                 <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
                   <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                      {user.fullName}
+                      {user.username}
                     </h1>
-                    <p className="text-muted-foreground">@{user.fullName.toLowerCase().replace(' ', '')}</p>
+                    <p className="text-muted-foreground">@{user.username.toLowerCase().replace(' ', '')}</p>
                   </div>
 
                   <div className="flex items-center gap-2">

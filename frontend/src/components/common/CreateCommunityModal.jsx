@@ -112,6 +112,7 @@ const CreateCommunityModal = ({ isOpen, onClose, onCreate }) => {
 
     // Prepare community data as FormData to include files
     const formDataToSend = new FormData();
+    formDataToSend.append('title', formData.displayName);
     formDataToSend.append('name', formData.name);
     formDataToSend.append('description', formData.description);
 

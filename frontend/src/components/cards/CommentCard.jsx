@@ -49,11 +49,12 @@ const CommentCard = ({
   const dispatch = useDispatch();
   const {
     _id,
-    content,
-    author,
+    body,
+    author_id: author,
     upvotes = [],
     downvotes = [],
-    repliesCount = 0,
+    replies_count = 0,
+    score = 0,
     createdAt
   } = comment;
 
@@ -68,7 +69,6 @@ const CommentCard = ({
   const loadingReplies = useSelector(state => selectLoadingRepliesForComment(state, _id));
   const { user } = useSelector(state => state.auth);
 
-  const score = upvotes.length - downvotes.length;
   const marginLeft = Math.min(depth * 20, 80); // Progressive indentation with max limit
 
   // Check if current user has liked this comment
@@ -81,10 +81,10 @@ const CommentCard = ({
   }, [user, upvotes]);
 
   useEffect(() => {
-    if (showReplies && replies.length === 0 && repliesCount > 0 && !loadingReplies) {
+    if (showReplies && replies.length === 0 && replies_count > 0 && !loadingReplies) {
       dispatch(fetchRepliesForComment({ commentId: _id }));
     }
-  }, [showReplies, replies.length, repliesCount, loadingReplies, dispatch, _id]);
+  }, [showReplies, replies.length, replies_count, loadingReplies, dispatch, _id]);
 
   // Close actions dropdown when clicking outside
   useEffect(() => {
@@ -123,8 +123,8 @@ const CommentCard = ({
     
     // Create share data for Web Share API
     const shareData = {
-      title: `Comment by ${author?.fullName || 'User'}`,
-      text: `"${content.length > 100 ? content.substring(0, 100) + '...' : content}" - ${author?.fullName || 'User'}`,
+      title: `Comment by ${author?.username || 'User'}`,
+      text: `"${body.length > 100 ? body.substring(0, 100) + '...' : body}" - ${author?.username || 'User'}`,
       url: shareUrl
     };
 
@@ -191,7 +191,7 @@ const CommentCard = ({
                 <Avatar className="h-8 w-8 ring-2 ring-primary/20 hover:ring-primary/40 transition-all">
                   <AvatarImage src={author?.avatar?.secure_url} />
                   <AvatarFallback className="bg-linear-to-br from-primary/20 to-primary/10 text-primary font-semibold text-sm">
-                    {author?.fullName?.[0]?.toUpperCase()}
+                    {author?.username?.[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
               </motion.div>
@@ -199,7 +199,7 @@ const CommentCard = ({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h4 className="font-semibold text-sm truncate">
-                    {author?.fullName}
+                    {author?.username}
                   </h4>
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs bg-primary/10 text-primary font-medium">
                     @{author?.username || 'user'}
@@ -227,7 +227,7 @@ const CommentCard = ({
           {/* Comment content */}
           <div className="mb-2">
             <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
-              {content}
+              {body}
             </p>
           </div>
 
@@ -344,7 +344,7 @@ const CommentCard = ({
           )}
 
           {/* Replies section */}
-          {repliesCount > 0 && (
+          {replies_count > 0 && (
             <div className="mt-3">
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -357,7 +357,7 @@ const CommentCard = ({
                 >
                   <MessageCircle className="h-4 w-4" />
                 </motion.div>
-                {showReplies ? 'Hide' : 'Show'} {repliesCount} {repliesCount === 1 ? 'reply' : 'replies'}
+                {showReplies ? 'Hide' : 'Show'} {replies_count} {replies_count === 1 ? 'reply' : 'replies'}
               </motion.button>
 
               <AnimatePresence>

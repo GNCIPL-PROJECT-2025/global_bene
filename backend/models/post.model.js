@@ -6,19 +6,26 @@ const postSchema = new Schema({
         required: true,
         maxlength: [300, "Title cannot be more than 300 characters"]
     },
-    content: {
+    body: {
         type: String,
         required: function() {
             // Content is required for text and link posts, optional for image/video posts
             return this.type === 'text' || this.type === 'link';
         }
     },
-    author: {
+    url: {
+        type: String,
+        default: ""
+    },
+    tags: [{
+        type: String
+    }],
+    author_id: {
         type: Schema.Types.ObjectId,
         ref: "User",
         required: true
     },
-    community: {
+    community_id: {
         type: Schema.Types.ObjectId,
         ref: "Community",
         required: true
@@ -40,7 +47,16 @@ const postSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "User"
     }],
-    commentsCount: {
+    num_comments: {
+        type: Number,
+        default: 0
+    },
+    status: {
+        type: String,
+        enum: ['flagged', 'removed', 'active'],
+        default: 'active'
+    },
+    score: {
         type: Number,
         default: 0
     },

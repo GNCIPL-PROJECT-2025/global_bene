@@ -32,7 +32,7 @@ import {
 const ProfileSettings = ({ user, onUpdate, onAvatarUpdate }) => {
   const dispatch = useDispatch();
   const [formData, setFormData] = useState({
-    fullName: user?.fullName || '',
+    username: user?.username || '',
     email: user?.email || '',
     phone: user?.phone?.toString() || '',
     gender: user?.gender || '',
@@ -50,7 +50,7 @@ const ProfileSettings = ({ user, onUpdate, onAvatarUpdate }) => {
   // Update form data when user prop changes
   useEffect(() => {
     setFormData({
-      fullName: user?.fullName || '',
+      username: user?.username || '',
       email: user?.email || '',
       phone: user?.phone?.toString() || '',
       gender: user?.gender || '',
@@ -118,10 +118,10 @@ const ProfileSettings = ({ user, onUpdate, onAvatarUpdate }) => {
   const validateProfileForm = () => {
     const newErrors = {};
 
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
-    } else if (formData.fullName.trim().length < 4) {
-      newErrors.fullName = 'Full name must be at least 4 characters';
+    if (!formData.username.trim()) {
+      newErrors.username = 'Username is required';
+    } else if (formData.username.trim().length < 4) {
+      newErrors.username = 'Username must be at least 4 characters';
     }
 
     if (!formData.email) {
@@ -313,9 +313,9 @@ const ProfileSettings = ({ user, onUpdate, onAvatarUpdate }) => {
           <div className="flex items-center gap-6">
             <div className="relative">
               <Avatar className="w-20 h-20">
-                <AvatarImage src={user?.avatar?.secure_url} alt={user?.fullName} />
+                <AvatarImage src={user?.avatar?.secure_url} alt={user?.username} />
                 <AvatarFallback className="text-xl bg-primary text-primary-foreground">
-                  {getInitials(user?.fullName || '')}
+                  {getInitials(user?.username || '')}
                 </AvatarFallback>
               </Avatar>
               {avatarLoading && (
@@ -380,15 +380,15 @@ const ProfileSettings = ({ user, onUpdate, onAvatarUpdate }) => {
           <form onSubmit={handleProfileSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
-                  id="fullName"
-                  value={formData.fullName}
-                  onChange={(e) => handleInputChange('fullName', e.target.value)}
-                  className={errors.fullName ? 'border-red-500' : ''}
+                  id="username"
+                  value={formData.username}
+                  onChange={(e) => handleInputChange('username', e.target.value)}
+                  className={errors.username ? 'border-red-500' : ''}
                 />
-                {errors.fullName && (
-                  <p className="text-sm text-red-500">{errors.fullName}</p>
+                {errors.username && (
+                  <p className="text-sm text-red-500">{errors.username}</p>
                 )}
               </div>
 

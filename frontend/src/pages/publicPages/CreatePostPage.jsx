@@ -130,9 +130,9 @@ const CreatePostPage = () => {
 
       // Add content based on post type
       if (postType === 'text') {
-        formData.append('content', content.trim());
+        formData.append('body', content.trim());
       } else if (postType === 'link') {
-        formData.append('content', url.trim());
+        formData.append('url', url.trim());
       } else if (postType === 'image' && imageFile) {
         formData.append('media', imageFile);
       }
@@ -198,7 +198,7 @@ const CreatePostPage = () => {
                     ) : communities.length > 0 ? (
                       communities.map(community => (
                         <SelectItem key={community._id} value={community._id}>
-                          g/{community.name}
+                          g/{community.title}
                         </SelectItem>
                       ))
                     ) : (

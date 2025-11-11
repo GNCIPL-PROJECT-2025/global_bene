@@ -117,11 +117,11 @@ const communitySlice = createSlice({
       const communityIndex = state.communities.findIndex(c => c._id === communityId);
       if (communityIndex !== -1) {
         state.communities[communityIndex].members = members;
-        state.communities[communityIndex].memberCount = members.length;
+        state.communities[communityIndex].members_count = members.length;
       }
       if (state.currentCommunity && state.currentCommunity._id === communityId) {
         state.currentCommunity.members = members;
-        state.currentCommunity.memberCount = members.length;
+        state.currentCommunity.members_count = members.length;
       }
     },
   },

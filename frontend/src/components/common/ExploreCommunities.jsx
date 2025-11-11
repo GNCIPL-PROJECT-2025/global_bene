@@ -69,7 +69,7 @@ const ExploreCommunities = () => {
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'popular':
-          return (b.memberCount || 0) - (a.memberCount || 0);
+          return (b.members_count || 0) - (a.members_count || 0);
         case 'new':
           return new Date(b.createdAt) - new Date(a.createdAt);
         case 'alphabetical':

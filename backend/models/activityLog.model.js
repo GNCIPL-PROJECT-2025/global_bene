@@ -1,9 +1,9 @@
 // models/activityLog.model.js
 import mongoose, { Schema } from "mongoose";
 
-const actionSchema = new Schema(
+const activitySchema = new Schema(
   {
-    action: {
+    event_type: {
       type: String,
       required: true,
       enum: [
@@ -41,26 +41,36 @@ const actionSchema = new Schema(
         "upvote",
         "downvote",
         "read-notification",
-        "delete-notification"
-       
+        "delete-notification",
+        "view",
+        "click",
+        "share"
       ],
     },
     description: { type: String, default: "" },
-    ipAddress: { type: String },
-    userAgent: { type: String },
+    entity_type: { type: String }, // 'post', 'comment', 'community', etc.
+    entity_id: { type: Schema.Types.ObjectId }, // id of the entity
+    session_id: { type: String }, // access token
+    props: {
+      geo_location: { type: String },
+      ip_address: { type: String },
+      device: { type: String },
+      browser: { type: String },
+      platform: { type: String }
+    },
   },
   { timestamps: true }
 );
 
 const activityLogSchema = new Schema(
   {
-    user: {
+    user_id: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
       unique: true, // one log doc per user
     },
-    activities: [actionSchema], // array of actions
+    activities: [activitySchema], // array of activities
   },
   { timestamps: true }
 );

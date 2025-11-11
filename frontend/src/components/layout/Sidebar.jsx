@@ -83,7 +83,7 @@ const Sidebar = ({ communities = [], userCommunities = [], onCreateCommunity }) 
                   </Link>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Users className="h-3 w-3" />
-                    <span>{community.memberCount || 0} members</span>
+                    <span>{community.members_count || 0} members</span>
                   </div>
                 </div>
               </motion.div>
