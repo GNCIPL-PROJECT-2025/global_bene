@@ -80,9 +80,9 @@ function generateEmailTemplate(verificationCode, companyName = "GNCIPL", logoUrl
 const refreshAccessToken = asyncHandler(async (req, res, next) => {
 
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
-    
+
     if (!incomingRefreshToken) {
-     
+
         return next(new ErrorHandler("Unauthorises Request", 401))
     }
 
@@ -93,9 +93,9 @@ const refreshAccessToken = asyncHandler(async (req, res, next) => {
         )
 
         const user = await User.findById(decodedToken?._id);
-       
+
         if (!user || user.refreshToken !== incomingRefreshToken) {
-           
+
             return next(new ErrorHandler("Invalid or Expired Refresh Token", 401))
 
         }
@@ -114,17 +114,21 @@ const refreshAccessToken = asyncHandler(async (req, res, next) => {
 // *Register Route
 const registerUser = asyncHandler(async (req, res, next) => {
     const { username, email, phone, password, gender } = req.body;
-    
+
     console.log("Registration data received:", { username, email, phone, password: "***", gender });
-    
+
     const requiredFields = [username, email, phone, password]
     const checkFields = { email, phone }
 
-    if (requiredFields.some((field) => !field || field.trim() === "")) return next(new ErrorHandler("All fields are required", 400))
+    // if (requiredFields.some((field) => !field || field.trim() === "")) return next(new ErrorHandler("All fields are required", 400))
+    if (requiredFields.some((field) => !field || field.toString().trim() === "")) {
+        return next(new ErrorHandler("All fields are required", 400));
+    }
+
     if (password.length < 8) return next(new ErrorHandler("Password must be at least 8 characters long", 400));
 
     const existingUser = await User.findOne({
-        $or: [{email}, {phone}]
+        $or: [{ email }, { phone }]
     })
 
     if (existingUser) {
@@ -134,9 +138,9 @@ const registerUser = asyncHandler(async (req, res, next) => {
 
     try {
         const user = await User.create({
-            username, 
-            email, 
-            phone, 
+            username,
+            email,
+            phone,
             password,
             gender: gender || 'not specified'
         })
@@ -194,7 +198,7 @@ const loginUser = asyncHandler(async (req, res, next) => {
 // *Logout Route
 const logoutUser = asyncHandler(async (req, res, next) => {
     try {
-      
+
         const userId = req.user._id
 
         try {
@@ -209,7 +213,7 @@ const logoutUser = asyncHandler(async (req, res, next) => {
                     new: true
                 }
             ).select("username");
-     
+
             await logActivity(
                 req.user._id,
                 "logout",
@@ -733,7 +737,7 @@ const deleteUser = asyncHandler(async (req, res, next) => {
         // Delete the user
         await User.findByIdAndDelete(userId);
 
- 
+
         res.status(200).json({ success: true, message: "User deleted successfully" });
     } catch (error) {
         return next(new ErrorHandler("Internal Server Error", 500))

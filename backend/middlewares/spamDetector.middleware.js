@@ -48,3 +48,4 @@ export const spamDetector = asyncHandler(async (req, res, next) => {
         next(err);
     }
 })
+

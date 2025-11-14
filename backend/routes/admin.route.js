@@ -22,5 +22,4 @@ router.route("/user/:id").get(verifyJWT, customRoles("admin"), getOneUser)
 
 router.route("/user-avatar/:id").put(verifyJWT, customRoles("admin"), upload.single("avatar"), adminUpdateUserAvatar)
 
-
 export default router;

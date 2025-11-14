@@ -10,6 +10,7 @@ const reportSchema = new Schema({
         type: String,
         enum: ['Comment', 'User', 'Post'],
         required: true
+        
     },
     target_id: {
         type: Schema.Types.ObjectId,

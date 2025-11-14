@@ -38,7 +38,7 @@ const userSchema = new Schema({
         trim: true,
         validate: {
             validator: function (value) {
-                return validator.isEmail(value); // ✅ true or false
+                return validator.isEmail(value); //  true or false
             },
             message: "Please enter email in correct format - /xyz@gmail.com/"
         }
