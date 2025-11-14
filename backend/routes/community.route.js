@@ -10,7 +10,10 @@ import {
     joinCommunity,
     leaveCommunity,
     updateCommunity,
-    deleteCommunity
+    deleteCommunity,
+    removeMemberFromCommunity,
+    promoteToModerator,
+    demoteFromModerator
 } from "../controllers/community.controller.js";
 
 const router = express.Router();
@@ -27,7 +30,12 @@ router.route("/:id").get(getCommunityById);
 router.route("/").post(verifyJWT, upload.any(), createCommunity);
 router.route("/:id/join").post(verifyJWT, joinCommunity);
 router.route("/:id/leave").post(verifyJWT, leaveCommunity);
-router.route("/:id").put(verifyJWT, updateCommunity);
+router.route("/:id").put(verifyJWT, upload.any(), updateCommunity);
 router.route("/:id").delete(verifyJWT, deleteCommunity);
+
+// Member management routes (creator/moderator only)
+router.route("/:id/remove-member").post(verifyJWT, removeMemberFromCommunity);
+router.route("/:id/promote-moderator").post(verifyJWT, promoteToModerator);
+router.route("/:id/demote-moderator").post(verifyJWT, demoteFromModerator);
 
 export default router;

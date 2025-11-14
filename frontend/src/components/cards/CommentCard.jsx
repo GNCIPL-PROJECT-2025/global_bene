@@ -15,7 +15,8 @@ import {
   Share,
   Flag,
   Trash2,
-  Edit3
+  Edit3,
+  AlertTriangle
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fetchRepliesForComment } from '@/redux/slice/comment.slice';
@@ -55,7 +56,10 @@ const CommentCard = ({
     downvotes = [],
     replies_count = 0,
     score = 0,
-    createdAt
+    createdAt,
+    status,
+    spamScore = 0,
+    toxicityScore = 0
   } = comment;
 
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -64,6 +68,10 @@ const CommentCard = ({
   const [isLiked, setIsLiked] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const actionsRef = React.useRef(null);
+
+  // Check if comment should show warning
+  const shouldShowWarning = status === 'flagged' || status === 'removed' || spamScore > 0.5 || toxicityScore > 0.5;
+  const isRemoved = status === 'removed';
 
   const replies = useSelector(state => selectRepliesForComment(state, _id));
   const loadingReplies = useSelector(state => selectLoadingRepliesForComment(state, _id));
@@ -223,6 +231,21 @@ const CommentCard = ({
               </motion.button>
             </div>
           </div>
+
+          {/* Warning */}
+          {shouldShowWarning && (
+            <div className={`mt-2 p-2 border rounded-md ${isRemoved ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'}`}>
+              <div className={`flex items-center gap-2 ${isRemoved ? 'text-red-800' : 'text-yellow-800'}`}>
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+                <span className="text-xs font-medium">
+                  {isRemoved 
+                    ? 'This comment has been removed.'
+                    : 'This comment has been flagged for review.'
+                  }
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Comment content */}
           <div className="mb-2">

@@ -1,7 +1,7 @@
 import express from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
-
+import { spamDetector } from "../middlewares/spamDetector.middleware.js";
 import {
     createPost,
     getAllPosts,
@@ -25,8 +25,8 @@ router.route("/user/:userId").get(getPostsByUser);
 router.route("/:id").get(getPostById);
 
 // Protected routes
-router.route("/").post(verifyJWT, upload.single("media"), createPost);
-router.route("/:id").put(verifyJWT, updatePost);
+router.route("/").post(verifyJWT, upload.single("media"), spamDetector, createPost);
+router.route("/:id").put(verifyJWT, spamDetector,  updatePost);
 router.route("/:id").delete(verifyJWT, deletePost);
 router.route("/:id/upvote").post(verifyJWT, upvotePost);
 router.route("/:id/downvote").post(verifyJWT, downvotePost);

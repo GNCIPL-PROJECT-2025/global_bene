@@ -67,6 +67,14 @@ const postSchema = new Schema({
     isLocked: {
         type: Boolean,
         default: false
+    },
+    spamScore: {
+        type: Number,
+        default: 0
+    },
+    toxicityScore: {
+        type: Number,
+        default: 0
     }
 }, {
     timestamps: true

@@ -86,8 +86,8 @@ const community = await Community.create({
     members_count: 1
 });
 
-    await community.populate('members', 'username avatar');
-    await community.populate('moderators', 'username avatar');
+    await community.populate('members', '_id username email avatar');
+    await community.populate('moderators', '_id username email avatar');
 
     await logActivity(
         creator,
@@ -107,7 +107,7 @@ const community = await Community.create({
 // Get all communities
 export const getAllCommunities = asyncHandler(async (req, res) => {
     const communities = await Community.find({})
-        .populate('members', 'username avatar')
+        .populate('members', '_id username email avatar')
         .select('name title description avatar banner members_count createdAt')
         .sort({ members_count: -1, createdAt: -1 });
 
@@ -119,8 +119,8 @@ export const getCommunityById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     const community = await Community.findById(id)
-        .populate('members', 'username avatar')
-        .populate('moderators', 'username avatar');
+        .populate('members', '_id username email avatar')
+        .populate('moderators', '_id username email avatar');
 
     if (!community) {
         throw new ApiError(404, "Community not found");
@@ -134,8 +134,8 @@ export const getCommunityByName = asyncHandler(async (req, res) => {
     const { name } = req.params;
 
     const community = await Community.findOne({ name: name.toLowerCase() })
-        .populate('members', 'username avatar')
-        .populate('moderators', 'username avatar');
+        .populate('members', '_id username email avatar')
+        .populate('moderators', '_id username email avatar');
 
     if (!community) {
         throw new ApiError(404, "Community not found");
@@ -175,7 +175,7 @@ export const joinCommunity = asyncHandler(async (req, res) => {
     );
 
     // Populate members for consistent response
-    await community.populate('members', 'username avatar');
+    await community.populate('members', '_id username email avatar');
 
     res.status(200).json(new ApiResponse(200, community, "Joined community successfully"));
 });
@@ -211,7 +211,7 @@ export const leaveCommunity = asyncHandler(async (req, res) => {
     );
 
     // Populate members for consistent response
-    await community.populate('members', 'username avatar');
+    await community.populate('members', '_id username email avatar');
 
     res.status(200).json(new ApiResponse(200, community, "Left community successfully"));
 });
@@ -231,8 +231,39 @@ export const updateCommunity = asyncHandler(async (req, res) => {
         throw new ApiError(403, "Only creator can update community");
     }
 
-    community.description = description || community.description;
-    community.rules = rules || community.rules;
+    // Handle avatar upload
+    if (req.files && req.files.find(file => file.fieldname === 'avatar')) {
+        const avatarFile = req.files.find(file => file.fieldname === 'avatar');
+        const avatarUpload = await uploadOnCloudinary(avatarFile.path, cloudinaryCommunityRefer, req.user, avatarFile.originalname);
+        if (avatarUpload) {
+            community.avatar = {
+                public_id: avatarUpload.public_id,
+                secure_url: avatarUpload.secure_url
+            };
+        }
+    }
+
+    // Handle banner upload
+    if (req.files && req.files.find(file => file.fieldname === 'banner')) {
+        const bannerFile = req.files.find(file => file.fieldname === 'banner');
+        const bannerUpload = await uploadOnCloudinary(bannerFile.path, cloudinaryCommunityRefer, req.user, bannerFile.originalname);
+        if (bannerUpload) {
+            community.banner = {
+                public_id: bannerUpload.public_id,
+                secure_url: bannerUpload.secure_url
+            };
+        }
+    }
+
+    // Update other fields
+    community.description = description !== undefined ? description : community.description;
+    if (rules !== undefined) {
+        try {
+            community.rules = JSON.parse(rules);
+        } catch (error) {
+            console.log("Error parsing rules:", error);
+        }
+    }
     community.is_private = is_private !== undefined ? is_private : community.is_private;
 
     await community.save();
@@ -278,4 +309,159 @@ export const deleteCommunity = asyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(userId, { $inc: { num_communities: -1 } });
 
     res.status(200).json(new ApiResponse(200, null, "Community deleted successfully"));
+});
+
+// Remove member from community (only creator/moderators)
+export const removeMemberFromCommunity = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { memberId } = req.body;
+    const userId = req.user._id;
+
+    if (!memberId) {
+        throw new ApiError(400, "Member ID is required");
+    }
+
+    const community = await Community.findById(id);
+    if (!community) {
+        throw new ApiError(404, "Community not found");
+    }
+
+    // Check if user is creator or moderator
+    const isCreator = community.creator_id._id.toString() === userId.toString();
+    const isModerator = community.moderators.some(mod => mod.toString() === userId.toString());
+
+    if (!isCreator && !isModerator) {
+        throw new ApiError(403, "Only creator or moderators can remove members");
+    }
+
+    // Check if member exists in community
+    if (!community.members.includes(memberId)) {
+        throw new ApiError(400, "Member not found in community");
+    }
+
+    // Prevent removing the creator
+    if (community.creator_id._id.toString() === memberId.toString()) {
+        throw new ApiError(400, "Cannot remove community creator");
+    }
+
+    // Remove member from community
+    community.members = community.members.filter(member => member.toString() !== memberId.toString());
+    community.moderators = community.moderators.filter(mod => mod.toString() !== memberId.toString());
+    community.members_count = community.members.length;
+    await community.save();
+
+    // Remove community from user's followed communities
+    await User.findByIdAndUpdate(memberId, { $pull: { communities_followed: id } });
+
+    await logActivity(
+        userId,
+        "remove-member",
+        `${req.user.username} removed a member from community: ${community.title}`,
+        req,
+        'community',
+        id
+    );
+
+    await community.populate('members', '_id username email avatar');
+    await community.populate('moderators', '_id username email avatar');
+
+    res.status(200).json(new ApiResponse(200, community, "Member removed successfully"));
+});
+
+// Promote member to moderator (only creator)
+export const promoteToModerator = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { memberId } = req.body;
+    const userId = req.user._id;
+
+    if (!memberId) {
+        throw new ApiError(400, "Member ID is required");
+    }
+
+    const community = await Community.findById(id);
+    if (!community) {
+        throw new ApiError(404, "Community not found");
+    }
+
+    // Check if user is creator
+    if (community.creator_id._id.toString() !== userId.toString()) {
+        throw new ApiError(403, "Only creator can promote members to moderator");
+    }
+
+    // Check if member exists in community
+    if (!community.members.includes(memberId)) {
+        throw new ApiError(400, "Member not found in community");
+    }
+
+    // Check if already moderator
+    if (community.moderators.includes(memberId)) {
+        throw new ApiError(400, "Member is already a moderator");
+    }
+
+    // Promote to moderator
+    community.moderators.push(memberId);
+    await community.save();
+
+    await logActivity(
+        userId,
+        "promote-moderator",
+        `${req.user.username} promoted a member to moderator in community: ${community.title}`,
+        req,
+        'community',
+        id
+    );
+
+    await community.populate('members', '_id username email avatar');
+    await community.populate('moderators', '_id username email avatar');
+
+    res.status(200).json(new ApiResponse(200, community, "Member promoted to moderator successfully"));
+});
+
+// Demote moderator to member (only creator)
+export const demoteFromModerator = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { memberId } = req.body;
+    const userId = req.user._id;
+
+    if (!memberId) {
+        throw new ApiError(400, "Member ID is required");
+    }
+
+    const community = await Community.findById(id);
+    if (!community) {
+        throw new ApiError(404, "Community not found");
+    }
+
+    // Check if user is creator
+    if (community.creator_id._id.toString() !== userId.toString()) {
+        throw new ApiError(403, "Only creator can demote moderators");
+    }
+
+    // Check if member is moderator
+    if (!community.moderators.includes(memberId)) {
+        throw new ApiError(400, "Member is not a moderator");
+    }
+
+    // Prevent demoting the creator
+    if (community.creator_id._id.toString() === memberId.toString()) {
+        throw new ApiError(400, "Cannot demote community creator");
+    }
+
+    // Demote from moderator
+    community.moderators = community.moderators.filter(mod => mod.toString() !== memberId.toString());
+    await community.save();
+
+    await logActivity(
+        userId,
+        "demote-moderator",
+        `${req.user.username} demoted a moderator in community: ${community.title}`,
+        req,
+        'community',
+        id
+    );
+
+    await community.populate('members', '_id username email avatar');
+    await community.populate('moderators', '_id username email avatar');
+
+    res.status(200).json(new ApiResponse(200, community, "Moderator demoted successfully"));
 });
