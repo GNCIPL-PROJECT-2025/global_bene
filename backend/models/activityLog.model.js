@@ -75,4 +75,4 @@ const activityLogSchema = new Schema(
   { timestamps: true }
 );
 
-export const ActivityLog = mongoose.model("ActivityLog", activityLogSchema);
+export const UserInteractionLog = mongoose.model("UserInteractionLog", activityLogSchema, "userinteractionlogs");

@@ -20,7 +20,7 @@ const postSchema = new Schema({
     tags: [{
         type: String
     }],
-    author_id: {
+    author: {
         type: Schema.Types.ObjectId,
         ref: "User",
         required: true
@@ -28,7 +28,7 @@ const postSchema = new Schema({
     community_id: {
         type: Schema.Types.ObjectId,
         ref: "Community",
-        required: true
+        required: false
     },
     type: {
         type: String,

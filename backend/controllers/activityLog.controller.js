@@ -1,11 +1,11 @@
 // controllers/activityLog.controller.js
-import { ActivityLog } from "../models/activityLog.model.js";
+import { UserInteractionLog } from "../models/activityLog.model.js";
 import { logActivity } from "../utils/logActivity.utils.js";
 
 // ================== USER: GET MY ACTIVITY ==================
 export const getMyActivityLogs = async (req, res) => {
     try {
-        const log = await ActivityLog.findOne({ user: req.user._id })
+        const log = await UserInteractionLog.findOne({ user: req.user._id })
             .populate("user", "fullName email role");
 
         if (!log) {
@@ -41,7 +41,7 @@ export const getAllActivityLogs = async (req, res) => {
         let filter = {};
         if (userId) filter.user = userId;
 
-        let logs = await ActivityLog.find(filter)
+        let logs = await UserInteractionLog.find(filter)
             .populate("user", "fullName email role");
 
         // Optional: filter activities by action
@@ -86,7 +86,7 @@ export const clearUserLogs = async (req, res) => {
     try {
         const { id } = req.params; // userId
 
-        const log = await ActivityLog.findOne({ user: id });
+        const log = await UserInteractionLog.findOne({ user: id });
         if (!log) {
             return res.status(404).json({ message: "No logs found for this user" });
         }

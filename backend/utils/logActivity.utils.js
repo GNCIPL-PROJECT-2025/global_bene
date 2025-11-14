@@ -1,6 +1,6 @@
 // utils/logActivity.utils.js
 
-import { ActivityLog } from "../models/activityLog.model.js";
+import { UserInteractionLog } from "../models/activityLog.model.js";
 
 // Simple function to parse user agent
 const parseUserAgent = (userAgent) => {
@@ -49,7 +49,7 @@ export const logActivity = async (userId, event_type, description, req, entity_t
             },
         };
 
-        await ActivityLog.findOneAndUpdate(
+        await UserInteractionLog.findOneAndUpdate(
             { user_id: userId },
             {
                 $push: { activities: activity },

@@ -99,13 +99,23 @@ export const getAllCommunities = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, communities, "Communities fetched successfully"));
 });
 
-// Get community by ID
+// Get community by ID or name
 export const getCommunityById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const community = await Community.findById(id)
-        .populate('members', 'username avatar')
-        .populate('moderators', 'username avatar');
+    let community;
+    // Check if id is a valid ObjectId, if not, treat it as name
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+        // It's an ObjectId
+        community = await Community.findById(id)
+            .populate('members', 'username avatar')
+            .populate('moderators', 'username avatar');
+    } else {
+        // Treat as community name
+        community = await Community.findOne({ name: id.toLowerCase() })
+            .populate('members', 'username avatar')
+            .populate('moderators', 'username avatar');
+    }
 
     if (!community) {
         throw new ApiError(404, "Community not found");

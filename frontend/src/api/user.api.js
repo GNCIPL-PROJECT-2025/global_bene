@@ -87,3 +87,53 @@ export const getUserStats = async (userId) => {
     throw error.response?.data || error;
   }
 };
+
+// Follow user
+export const followUser = async (targetUserId) => {
+  try {
+    const response = await axiosInstance.post(`/users/follow/${targetUserId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Unfollow user
+export const unfollowUser = async (targetUserId) => {
+  try {
+    const response = await axiosInstance.post(`/users/unfollow/${targetUserId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Get user followers
+export const getUserFollowers = async (userId, params = {}) => {
+  try {
+    const response = await axiosInstance.get(`/users/${userId}/followers`, { params });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Get user following
+export const getUserFollowing = async (userId, params = {}) => {
+  try {
+    const response = await axiosInstance.get(`/users/${userId}/following`, { params });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Get user profile by username
+export const getUserProfileByUsername = async (username) => {
+  try {
+    const response = await axiosInstance.get(`/users/profile/${username}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

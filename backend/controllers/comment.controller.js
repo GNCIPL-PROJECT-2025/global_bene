@@ -1,6 +1,7 @@
 import { asyncHandler } from "../middlewares/asyncHandler.middleware.js";
 import { Comment } from "../models/comment.model.js";
 import { Post } from "../models/post.model.js";
+import { User } from "../models/user.model.js";
 import { Notification } from "../models/notification.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -206,13 +207,19 @@ export const deleteComment = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const comment = await Comment.findById(id).populate('post_id');
+    const comment = await Comment.findById(id).populate({
+        path: 'post_id',
+        populate: {
+            path: 'community_id',
+            select: 'moderators'
+        }
+    });
     if (!comment) {
         throw new ApiError(404, "Comment not found");
     }
 
     const isAuthor = comment.author_id.toString() === userId.toString();
-    const isModerator = comment.post_id.community.moderators.includes(userId);
+    const isModerator = comment.post_id.community_id?.moderators?.includes(userId) || false;
 
     if (!isAuthor && !isModerator) {
         throw new ApiError(403, "Only author or moderator can delete comment");

@@ -112,7 +112,7 @@ export const getSavedPosts = async (params = {}) => {
 export const getUserPosts = async (userId, params = {}) => {
   try {
     const response = await axiosInstance.get(`/posts/user/${userId}`, { params });
-    return response.data.data;
+    return response.data;
   } catch (error) {
     throw error.response?.data || error;
   }

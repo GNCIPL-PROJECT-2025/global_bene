@@ -21,7 +21,7 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
     _id,
     title,
     body,
-    author_id: author,
+    author,
     community_id: community,
     upvotes = [],
     downvotes = [],
@@ -34,13 +34,13 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
   } = post;
 
   // Get community data from Redux state instead of post's embedded data
-  const communityId = typeof community === 'string' ? community : community._id;
-  const communityData = communities.find(c => c._id === communityId);
-  
+  const communityId = typeof community === 'string' ? community : community?._id;
+  const communityData = communityId ? communities.find(c => c._id === communityId) : null;
+
   // Fallback to embedded community data if global data not available
   const effectiveCommunityData = communityData || (typeof community === 'object' ? community : null);
-  
-  const isJoined = user && effectiveCommunityData?.members?.some(member => 
+
+  const isJoined = user && effectiveCommunityData?.members?.some(member =>
     (typeof member === 'string' ? member : member._id.toString()) === user._id.toString()
   );
 
@@ -171,53 +171,69 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
-              <Avatar className="h-5 w-5 sm:h-6 sm:w-6">
-                <AvatarImage src={effectiveCommunityData?.avatar?.secure_url || community?.avatar?.secure_url} />
-                <AvatarFallback>{(effectiveCommunityData?.name || community?.title || 'C')[0]?.toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <span className="font-medium hover:text-orange-600 cursor-pointer transition-colors">
-                g/{effectiveCommunityData?.title || community?.title}
-              </span>
-              <span>•</span>
+              {effectiveCommunityData ? (
+                <>
+                  <Avatar className="h-5 w-5 sm:h-6 sm:w-6">
+                    <AvatarImage src={effectiveCommunityData?.avatar?.secure_url || community?.avatar?.secure_url} />
+                    <AvatarFallback>{(effectiveCommunityData?.name || community?.title || 'C')[0]?.toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <Link
+                    to={`/r/${effectiveCommunityData?.title || community?.title}`}
+                    className="font-medium hover:text-orange-600 cursor-pointer transition-colors"
+                  >
+                    g/{effectiveCommunityData?.title || community?.title}
+                  </Link>
+                  <span>•</span>
+                </>
+              ) : (
+                <Badge variant="outline" className="text-xs mr-1">
+                  General
+                </Badge>
+              )}
               <span>Posted by</span>
               <Avatar className="h-4 w-4 sm:h-5 sm:w-5">
                 <AvatarImage src={author?.avatar?.secure_url} />
                 <AvatarFallback>{author?.username?.[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
-              <span className="hover:text-orange-600 cursor-pointer transition-colors truncate">
+              <Link
+                to={`/u/${author?.username}`}
+                className="hover:text-orange-600 cursor-pointer transition-colors truncate"
+              >
                 u/{author?.username}
-              </span>
+              </Link>
               <span>•</span>
               <span className="truncate">{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
             </div>
 
-            {/* Modern Join Button */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleJoinToggle}
-              disabled={communityLoading}
-              className={`
-                flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 self-start sm:self-auto
-                ${isJoined 
-                  ? 'bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100' 
-                  : 'bg-muted text-muted-foreground border border-border hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
-                }
-                ${communityLoading ? 'opacity-50 cursor-not-allowed' : ''}
-              `}
-            >
-              {isJoined ? (
-                <>
-                  <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                  <span>Joined</span>
-                </>
-              ) : (
-                <>
-                  <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                  <span>Join</span>
-                </>
-              )}
-            </motion.button>
+            {/* Modern Join Button - Only show if there's a community */}
+            {effectiveCommunityData && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleJoinToggle}
+                disabled={communityLoading}
+                className={`
+                  flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 self-start sm:self-auto
+                  ${isJoined
+                    ? 'bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100'
+                    : 'bg-muted text-muted-foreground border border-border hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
+                  }
+                  ${communityLoading ? 'opacity-50 cursor-not-allowed' : ''}
+                `}
+              >
+                {isJoined ? (
+                  <>
+                    <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                    <span>Joined</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                    <span>Join</span>
+                  </>
+                )}
+              </motion.button>
+            )}
           </div>
         </CardHeader>
         <CardContent>

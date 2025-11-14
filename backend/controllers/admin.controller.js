@@ -9,6 +9,9 @@ import bcrypt from "bcryptjs"
 import crypto from "crypto"
 
 import { User } from "../models/user.model.js";
+import { Post } from "../models/post.model.js";
+import { Comment } from "../models/comment.model.js";
+import { Community } from "../models/community.model.js";
 import { destroyOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.utils.js";
 import { cloudinaryAvatarRefer } from "../utils/constants.utils.js";
 import { logActivity } from "../utils/logActivity.utils.js";
@@ -216,6 +219,67 @@ const adminUpdateUserAvatar = asyncHandler(async (req, res, next) => {
 })
 
 
+// *Change User Role
+const adminChangeUserRole = asyncHandler(async (req, res, next) => {
+    const { userId } = req.params;
+    const { role } = req.body;
+
+    if (!role || !['user', 'admin'].includes(role)) {
+        return next(new ErrorHandler("Invalid role. Must be 'user' or 'admin'", 400));
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    if (user.role === role) {
+        return next(new ErrorHandler(`User is already ${role}`, 400));
+    }
+
+    user.role = role;
+    await user.save();
+
+    await logActivity(
+        req.user._id,
+        "admin-change-role",
+        `Admin ${req.user.username} changed role of ${user.username} to ${role}`,
+        req,
+        'user',
+        userId
+    );
+
+    return res.status(200).json({
+        success: true,
+        message: `User role updated to ${role}`,
+        user: { _id: user._id, username: user.username, role: user.role }
+    });
+});
+
+// *Admin Stats
+const adminStats = asyncHandler(async (req, res, next) => {
+    const totalUsers = await User.countDocuments();
+    const totalPosts = await Post.countDocuments();
+    const totalComments = await Comment.countDocuments();
+    const totalCommunities = await Community.countDocuments();
+
+    // Active users today (users who joined today or have recent activity)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const activeUsersToday = await User.countDocuments({ joined_at: { $gte: today } });
+
+    return res.status(200).json({
+        success: true,
+        stats: {
+            totalUsers,
+            totalPosts,
+            totalComments,
+            totalCommunities,
+            activeUsersToday
+        }
+    });
+});
+
 // *Delete User
 const adminDeleteUser = asyncHandler(async (req, res, next) => {
     try {
@@ -266,5 +330,7 @@ export {
     getOneUser,
     adminUpdateUserProfile,
     adminUpdateUserAvatar,
+    adminChangeUserRole,
+    adminStats,
     adminDeleteUser
 }

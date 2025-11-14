@@ -7,6 +7,8 @@ import {
     getOneUser,
     adminUpdateUserProfile,
     adminUpdateUserAvatar,
+    adminChangeUserRole,
+    adminStats,
     adminDeleteUser
 } from "../controllers/admin.controller.js";
 
@@ -22,5 +24,8 @@ router.route("/user/:id").get(verifyJWT, customRoles("admin"), getOneUser)
 
 router.route("/user-avatar/:id").put(verifyJWT, customRoles("admin"), upload.single("avatar"), adminUpdateUserAvatar)
 
+router.route("/change-role/:userId").put(verifyJWT, customRoles("admin"), adminChangeUserRole)
+
+router.route("/stats").get(verifyJWT, customRoles("admin"), adminStats)
 
 export default router;

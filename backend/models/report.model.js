@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 
-const reportSchema = new Schema({
+const spamPostSchema = new Schema({
     reporter_id: {
         type: Schema.Types.ObjectId,
         ref: "User",
@@ -34,4 +34,4 @@ const reportSchema = new Schema({
     timestamps: true
 });
 
-export const Report = mongoose.model("Report", reportSchema);
+export const SpamPost = mongoose.model("SpamPost", spamPostSchema, "spamposts");

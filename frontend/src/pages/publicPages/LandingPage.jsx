@@ -20,10 +20,10 @@ const LandingPage = () => {
 
   useEffect(() => {
     // Fetch real posts from API
-    const params = { 
+    const params = {
       sortBy: sortBy === 'hot' ? 'createdAt' : sortBy,
       page: 1,
-      limit: 10
+      limit: 100
     };
     dispatch(fetchPosts(params));
   }, [dispatch, sortBy]);
@@ -95,7 +95,7 @@ const LandingPage = () => {
             <p>Failed to load posts: {postsError}</p>
             <Button 
               variant="outline" 
-              onClick={() => dispatch(fetchPosts({ sortBy, page: 1, limit: 10 }))}
+              onClick={() => dispatch(fetchPosts({ sortBy, page: 1, limit: 100 }))}
               className="mt-2"
             >
               Retry
@@ -126,7 +126,7 @@ const LandingPage = () => {
 
           <TabsContent value={sortBy} className="mt-6">
             <div className="space-y-4">
-              {posts && posts.length > 0 ? posts.map((post, index) => (
+              {posts && posts.length > 0 ? posts.filter(post => post && post._id).map((post, index) => (
                 <motion.div
                   key={post._id}
                   initial={{ opacity: 0, y: 20 }}

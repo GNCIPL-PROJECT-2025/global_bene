@@ -112,14 +112,12 @@ const VerifyOtp = () => {
     setResendLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      console.log('OTP resent to:', { method, contact });
+      // Make API call to resend OTP
+      await sendOtp({ email: contact });
       setResendTimer(30);
       setErrors({});
     } catch (error) {
-      setErrors({ general: 'Failed to resend code. Please try again.' });
+      setErrors({ general: error.response?.data?.message || 'Failed to resend code. Please try again.' });
     } finally {
       setResendLoading(false);
     }

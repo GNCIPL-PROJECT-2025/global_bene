@@ -55,13 +55,41 @@ io.on('connection', (socket) => {
 // Make io available globally
 global.io = io;
 
+import { User } from "./models/user.model.js";
+
 // Connecting to Database and starting the server
 connectDB()
-    .then(() => {
-        server.listen(process.env.PORT || 3000, () => {
-            console.log(`Server is running on port ${process.env.PORT}`)
-        });
-    })
-    .catch((err) => {
-        console.log("Connection Failed", err)
-    })
+  .then(async () => {
+    // Create default admin user if not exists
+    const adminExists = await User.findOne({ email: "admin@globalbene.com" });
+    if (!adminExists) {
+      const admin = new User({
+        username: "admin",
+        email: "admin@globalbene.com",
+        password: "admin123",
+        role: "admin",
+        phone: "9999999999",
+        gender: "male"
+      });
+      await admin.save();
+      console.log("Default admin user created: admin@globalbene.com / admin123");
+    }
+
+    const PORT = process.env.PORT || 3000;
+    server.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`)
+    }).on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            const newPort = PORT + 1;
+            console.log(`Port ${PORT} is busy, starting on port ${newPort}`);
+            server.listen(newPort, () => {
+                console.log(`Server is running on port ${newPort}`)
+            });
+        } else {
+            console.error('Server error:', err);
+        }
+    });
+  })
+  .catch((err) => {
+    console.log("Connection Failed", err)
+  })

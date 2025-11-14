@@ -223,7 +223,7 @@ const logoutUser = asyncHandler(async (req, res, next) => {
 
         const options = {
             httpOnly: true,
-            secure: true
+            secure: process.env.NODE_ENV === 'production'
         }
 
 
@@ -242,36 +242,49 @@ const logoutUser = asyncHandler(async (req, res, next) => {
 
 // *OTP ROUTE
 const sendOtpToUser = asyncHandler(async (req, res, next) => {
-    const userId = req.user._id;
-    if (!userId) {
-        return next(new ErrorHandler("You are unauthorised to get otp, please register / login to continue", 400))
-    }
-    const user = await User.findById(userId)
-    if (!user?.email) {
-        return next(new ErrorHandler("Please provide email used for account creation!"))
-    }
+    let email;
 
-    const OTP = await user.generateVerificationCode()
-    await user.save()
+    // If user is logged in, use their email
+    if (req.user && req.user._id) {
+        const user = await User.findById(req.user._id);
+        if (!user?.email) {
+            return next(new ErrorHandler("Please provide email used for account creation!", 400));
+        }
+        email = user.email;
+        const OTP = await user.generateVerificationCode();
+        await user.save();
+    } else {
+        // If not logged in, expect email in request body
+        email = req.body.email;
+        if (!email) {
+            return next(new ErrorHandler("Email is required", 400));
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return next(new ErrorHandler("User not found with this email", 404));
+        }
+
+        const OTP = await user.generateVerificationCode();
+        await user.save();
+    }
 
     try {
-        let email = user?.email
-
         const message = generateEmailTemplate(OTP);
         const mailResponse = await sendEmail({
             email,
             subject: "YOUR VERIFICATION CODE",
             message
-        })
+        });
         return res.status(200).json({
             success: true,
             message: `Code sent successfully to ${email}`
-        })
+        });
 
     } catch (error) {
-        return next(new ErrorHandler(`Unable to send email to ${user.email}\n Error ${error.message || error}`, 400))
+        return next(new ErrorHandler(`Unable to send email to ${email}\n Error ${error.message || error}`, 400));
     }
-})
+});
 
 // *Verify Route
 
@@ -322,7 +335,7 @@ const verifyOtpForUser = asyncHandler(async (req, res, next) => {
 
     const options = {
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === 'production',
         maxAge: 30 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
         sameSite: "Strict"
     }
@@ -740,6 +753,214 @@ const deleteUser = asyncHandler(async (req, res, next) => {
     }
 });
 
+// *Follow User
+const followUser = asyncHandler(async (req, res, next) => {
+    const userId = req.user._id;
+    const { targetUserId } = req.params;
+
+    if (userId.toString() === targetUserId) {
+        return next(new ErrorHandler("You cannot follow yourself", 400));
+    }
+
+    const user = await User.findById(userId);
+    const targetUser = await User.findById(targetUserId);
+
+    if (!targetUser) {
+        return next(new ErrorHandler("User to follow not found", 404));
+    }
+
+    if (user.following.includes(targetUserId)) {
+        return next(new ErrorHandler("You are already following this user", 400));
+    }
+
+    // Add to following and followers
+    user.following.push(targetUserId);
+    user.num_following += 1;
+
+    targetUser.followers.push(userId);
+    targetUser.num_followers += 1;
+
+    await user.save();
+    await targetUser.save();
+
+    await logActivity(
+        userId,
+        "follow-user",
+        `${user.username} followed ${targetUser.username}`,
+        req,
+        'user',
+        targetUserId
+    );
+
+    return res.status(200).json({
+        success: true,
+        message: `You are now following ${targetUser.username}`,
+        following: user.following,
+        followers: targetUser.followers
+    });
+});
+
+// *Unfollow User
+const unfollowUser = asyncHandler(async (req, res, next) => {
+    const userId = req.user._id;
+    const { targetUserId } = req.params;
+
+    const user = await User.findById(userId);
+    const targetUser = await User.findById(targetUserId);
+
+    if (!targetUser) {
+        return next(new ErrorHandler("User to unfollow not found", 404));
+    }
+
+    if (!user.following.includes(targetUserId)) {
+        return next(new ErrorHandler("You are not following this user", 400));
+    }
+
+    // Remove from following and followers
+    user.following = user.following.filter(id => id.toString() !== targetUserId);
+    user.num_following -= 1;
+
+    targetUser.followers = targetUser.followers.filter(id => id.toString() !== userId.toString());
+    targetUser.num_followers -= 1;
+
+    await user.save();
+    await targetUser.save();
+
+    await logActivity(
+        userId,
+        "unfollow-user",
+        `${user.username} unfollowed ${targetUser.username}`,
+        req,
+        'user',
+        targetUserId
+    );
+
+    return res.status(200).json({
+        success: true,
+        message: `You have unfollowed ${targetUser.username}`,
+        following: user.following,
+        followers: targetUser.followers
+    });
+});
+
+// *Get User Followers
+const getUserFollowers = asyncHandler(async (req, res, next) => {
+    const { userId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    const user = await User.findById(userId).populate('followers', 'username avatar bio num_followers num_following');
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const paginatedFollowers = user.followers.slice(startIndex, endIndex);
+
+    res.status(200).json({
+        success: true,
+        followers: paginatedFollowers,
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(user.followers.length / limit),
+        totalFollowers: user.followers.length,
+        message: "Followers fetched successfully"
+    });
+});
+
+// *Get User Following
+const getUserFollowing = asyncHandler(async (req, res, next) => {
+    const { userId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    const user = await User.findById(userId).populate('following', 'username avatar bio num_followers num_following');
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const paginatedFollowing = user.following.slice(startIndex, endIndex);
+
+    res.status(200).json({
+        success: true,
+        following: paginatedFollowing,
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(user.following.length / limit),
+        totalFollowing: user.following.length,
+        message: "Following fetched successfully"
+    });
+});
+
+// *Get User Profile by Username
+const getUserProfileByUsername = asyncHandler(async (req, res, next) => {
+    const { username } = req.params;
+
+    const user = await User.findOne({ username }).select("-password -refreshToken").populate('savedPosts', '_id title');
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    // Calculate stats
+    const [postsCount, commentsCount, upvotesCount, downvotesCount, communitiesCount] = await Promise.all([
+        // Count posts by user
+        mongoose.model('Post').countDocuments({ author: user._id }),
+        // Count comments by user
+        mongoose.model('Comment').countDocuments({ author_id: user._id }),
+        // Count upvotes received on user's posts and comments
+        Promise.all([
+            mongoose.model('Post').aggregate([
+                { $match: { author: user._id } },
+                { $project: { upvotesCount: { $size: "$upvotes" } } },
+                { $group: { _id: null, total: { $sum: "$upvotesCount" } } }
+            ]),
+            mongoose.model('Comment').aggregate([
+                { $match: { author_id: user._id } },
+                { $project: { upvotesCount: { $size: "$upvotes" } } },
+                { $group: { _id: null, total: { $sum: "$upvotesCount" } } }
+            ])
+        ]).then(([postUpvotes, commentUpvotes]) => {
+            const postTotal = postUpvotes[0]?.total || 0;
+            const commentTotal = commentUpvotes[0]?.total || 0;
+            return postTotal + commentTotal;
+        }),
+        // Count downvotes received on user's posts and comments
+        Promise.all([
+            mongoose.model('Post').aggregate([
+                { $match: { author: user._id } },
+                { $project: { downvotesCount: { $size: "$downvotes" } } },
+                { $group: { _id: null, total: { $sum: "$downvotesCount" } } }
+            ]),
+            mongoose.model('Comment').aggregate([
+                { $match: { author_id: user._id } },
+                { $project: { downvotesCount: { $size: "$downvotes" } } },
+                { $group: { _id: null, total: { $sum: "$downvotesCount" } } }
+            ])
+        ]).then(([postDownvotes, commentDownvotes]) => {
+            const postTotal = postDownvotes[0]?.total || 0;
+            const commentTotal = commentDownvotes[0]?.total || 0;
+            return postTotal + commentTotal;
+        }),
+        // Count communities user is member of
+        mongoose.model('Community').countDocuments({ members: user._id })
+    ]);
+
+    const userWithStats = {
+        ...user.toObject(),
+        stats: {
+            posts: postsCount,
+            comments: commentsCount,
+            upvotes: upvotesCount,
+            downvotes: downvotesCount,
+            communities: communitiesCount
+        }
+    };
+
+    res.status(200).json({
+        success: true,
+        user: userWithStats
+    });
+});
+
 // *Google OAuth Callback
 const googleAuthCallback = asyncHandler(async (req, res, next) => {
     try {
@@ -761,7 +982,7 @@ const googleAuthCallback = asyncHandler(async (req, res, next) => {
         // Set cookies
         const options = {
             httpOnly: true,
-            secure: true,
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'Strict'
         };
 
@@ -791,5 +1012,10 @@ export {
     updateUserProfile,
     updateUserAvatar,
     deleteUser,
+    followUser,
+    unfollowUser,
+    getUserFollowers,
+    getUserFollowing,
+    getUserProfileByUsername,
     googleAuthCallback
 }

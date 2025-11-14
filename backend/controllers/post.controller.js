@@ -3,8 +3,7 @@ import { Post } from "../models/post.model.js";
 import { Community } from "../models/community.model.js";
 import { Notification } from "../models/notification.model.js";
 import { User } from "../models/user.model.js";
-import { ApiError } from "../utils/ApiError.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
+import ErrorHandler from "../middlewares/error.middleware.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.utils.js";
 import { cloudinaryPostRefer } from "../utils/constants.utils.js";
 import { logActivity } from "../utils/logActivity.utils.js";
@@ -14,22 +13,25 @@ export const createPost = asyncHandler(async (req, res) => {
     const { title, body, communityId, type, url, tags } = req.body;
     const author = req.user._id;
 
-    if (!title || !communityId) {
-        throw new ApiError(400, "Title and communityId are required");
+    if (!title) {
+        throw new ErrorHandler("Title is required", 400);
     }
 
     // Content is required for text and link posts, optional for image/video posts
     if ((type === 'text' || type === 'link') && !body) {
-        throw new ApiError(400, "Body is required for text and link posts");
+        throw new ErrorHandler("Body is required for text and link posts", 400);
     }
 
-    const community = await Community.findById(communityId);
-    if (!community) {
-        throw new ApiError(404, "Community not found");
-    }
+    // If communityId is provided, validate community membership
+    if (communityId) {
+        const community = await Community.findById(communityId);
+        if (!community) {
+            throw new ErrorHandler("Community not found", 404);
+        }
 
-    if (!community.members.includes(author)) {
-        throw new ApiError(403, "You must be a member of the community to post");
+        if (!community.members.includes(author)) {
+            throw new ErrorHandler("You must be a member of the community to post", 403);
+        }
     }
 
     let media = null;
@@ -47,16 +49,18 @@ export const createPost = asyncHandler(async (req, res) => {
     const post = await Post.create({
         title,
         body: body || "",
-        author_id,
-        community_id: communityId,
+        author,
+        community_id: communityId || null,
         type: type || "text",
         media,
         url: url || "",
         tags: tags || []
     });
 
-    await post.populate('author_id', 'username avatar');
-    await post.populate('community_id', 'title');
+    await post.populate('author', 'username avatar');
+    if (communityId) {
+        await post.populate('community_id', 'title');
+    }
 
     await logActivity(
         author,
@@ -70,7 +74,7 @@ export const createPost = asyncHandler(async (req, res) => {
     // Increment num_posts for author
     await User.findByIdAndUpdate(author, { $inc: { num_posts: 1 } });
 
-    res.status(201).json(new ApiResponse(201, post, "Post created successfully"));
+    res.status(201).json({ success: true, post, message: "Post created successfully" });
 });
 
 // Get all posts (with pagination and filtering)
@@ -83,7 +87,7 @@ export const getAllPosts = asyncHandler(async (req, res) => {
     }
 
     const posts = await Post.find(filter)
-        .populate('author_id', 'username avatar')
+        .populate('author', 'username avatar')
         .populate('community_id', 'title members')
         .sort({ [sortBy]: -1 })
         .limit(limit * 1)
@@ -91,12 +95,14 @@ export const getAllPosts = asyncHandler(async (req, res) => {
 
     const totalPosts = await Post.countDocuments(filter);
 
-    res.status(200).json(new ApiResponse(200, {
+    res.status(200).json({
+        success: true,
         posts,
         totalPages: Math.ceil(totalPosts / limit),
         currentPage: page,
-        totalPosts
-    }, "Posts fetched successfully"));
+        totalPosts,
+        message: "Posts fetched successfully"
+    });
 });
 
 // Get posts by user
@@ -104,21 +110,23 @@ export const getPostsByUser = asyncHandler(async (req, res) => {
     const { userId } = req.params;
     const { page = 1, limit = 10, sortBy = "createdAt" } = req.query;
 
-    const posts = await Post.find({ author_id: userId })
-        .populate('author_id', 'username avatar')
+    const posts = await Post.find({ author: userId })
+        .populate('author', 'username avatar')
         .populate('community_id', 'title members')
         .sort({ [sortBy]: -1 })
         .limit(limit * 1)
         .skip((page - 1) * limit);
 
-    const totalPosts = await Post.countDocuments({ author_id: userId });
+    const totalPosts = await Post.countDocuments({ author: userId });
 
-    res.status(200).json(new ApiResponse(200, {
+    res.status(200).json({
+        success: true,
         posts,
         totalPages: Math.ceil(totalPosts / limit),
         currentPage: page,
-        totalPosts
-    }, "User posts fetched successfully"));
+        totalPosts,
+        message: "User posts fetched successfully"
+    });
 });
 
 // Get post by ID
@@ -126,16 +134,16 @@ export const getPostById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     const post = await Post.findById(id)
-        .populate('author_id', 'username avatar')
+        .populate('author', 'username avatar')
         .populate('community_id', 'title members')
         .populate('upvotes', 'username')
         .populate('downvotes', 'username');
 
     if (!post) {
-        throw new ApiError(404, "Post not found");
+        throw new ErrorHandler("Post not found", 404);
     }
 
-    res.status(200).json(new ApiResponse(200, post, "Post fetched successfully"));
+    res.status(200).json({ success: true, post, message: "Post fetched successfully" });
 });
 
 // Update post (only author)
@@ -146,18 +154,18 @@ export const updatePost = asyncHandler(async (req, res) => {
 
     const post = await Post.findById(id);
     if (!post) {
-        throw new ApiError(404, "Post not found");
+        throw new ErrorHandler("Post not found", 404);
     }
 
-    if (post.author_id.toString() !== userId.toString()) {
-        throw new ApiError(403, "Only author can update post");
+    if (post.author.toString() !== userId.toString()) {
+        throw new ErrorHandler("Only author can update post", 403);
     }
 
     post.title = title || post.title;
     post.body = body || post.body;
 
     await post.save();
-    await post.populate('author_id', 'username avatar');
+    await post.populate('author', 'username avatar');
     await post.populate('community_id', 'title');
 
     await logActivity(
@@ -169,7 +177,7 @@ export const updatePost = asyncHandler(async (req, res) => {
         id
     );
 
-    res.status(200).json(new ApiResponse(200, post, "Post updated successfully"));
+    res.status(200).json({ success: true, post, message: "Post updated successfully" });
 });
 
 // Delete post (author or moderator)
@@ -179,14 +187,14 @@ export const deletePost = asyncHandler(async (req, res) => {
 
     const post = await Post.findById(id).populate('community_id');
     if (!post) {
-        throw new ApiError(404, "Post not found");
+        throw new ErrorHandler("Post not found", 404);
     }
 
-    const isAuthor = post.author_id.toString() === userId.toString();
-    const isModerator = post.community_id.moderators.includes(userId);
+    const isAuthor = post.author.toString() === userId.toString();
+    const isModerator = post.community_id ? post.community_id.moderators.includes(userId) : false;
 
     if (!isAuthor && !isModerator) {
-        throw new ApiError(403, "Only author or moderator can delete post");
+        throw new ErrorHandler("Only author can delete this post", 403);
     }
 
     // If author deletes, set status to removed and clear body
@@ -213,7 +221,7 @@ export const deletePost = asyncHandler(async (req, res) => {
         await User.findByIdAndUpdate(userId, { $inc: { num_posts: -1 } });
     }
 
-    res.status(200).json(new ApiResponse(200, null, "Post deleted successfully"));
+    res.status(200).json({ success: true, message: "Post deleted successfully" });
 });
 
 // Upvote post
@@ -221,9 +229,9 @@ export const upvotePost = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const post = await Post.findById(id).populate('author_id');
+    const post = await Post.findById(id).populate('author');
     if (!post) {
-        throw new ApiError(404, "Post not found");
+        throw new ErrorHandler("Post not found", 404);
     }
 
     const hasUpvoted = post.upvotes.includes(userId);
@@ -250,9 +258,9 @@ export const upvotePost = asyncHandler(async (req, res) => {
         );
 
         // Create notification if not self-vote
-        if (post.author_id.toString() !== userId.toString()) {
+        if (post.author.toString() !== userId.toString()) {
             notification = await Notification.create({
-                user: post.author_id,
+                user: post.author,
                 type: "upvote",
                 message: `${req.user.username} upvoted your post`,
                 relatedPost: id
@@ -276,10 +284,10 @@ export const upvotePost = asyncHandler(async (req, res) => {
 
     // Emit notification if created
     if (notification) {
-        global.io.to(`user_${post.author_id}`).emit('new-notification', notification);
+        global.io.to(`user_${post.author}`).emit('new-notification', notification);
     }
 
-    res.status(200).json(new ApiResponse(200, post, "Post upvoted successfully"));
+    res.status(200).json({ success: true, post, message: "Post upvoted successfully" });
 });
 
 // Downvote post
@@ -287,9 +295,9 @@ export const downvotePost = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const post = await Post.findById(id).populate('author_id');
+    const post = await Post.findById(id).populate('author');
     if (!post) {
-        throw new ApiError(404, "Post not found");
+        throw new ErrorHandler("Post not found", 404);
     }
 
     const hasUpvoted = post.upvotes.includes(userId);
@@ -316,9 +324,9 @@ export const downvotePost = asyncHandler(async (req, res) => {
         );
 
         // Create notification if not self-vote
-        if (post.author_id.toString() !== userId.toString()) {
+        if (post.author.toString() !== userId.toString()) {
             notification = await Notification.create({
-                user: post.author_id,
+                user: post.author,
                 type: "downvote",
                 message: `${req.user.username} downvoted your post`,
                 relatedPost: id
@@ -342,10 +350,10 @@ export const downvotePost = asyncHandler(async (req, res) => {
 
     // Emit notification if created
     if (notification) {
-        global.io.to(`user_${post.author_id}`).emit('new-notification', notification);
+        global.io.to(`user_${post.author}`).emit('new-notification', notification);
     }
 
-    res.status(200).json(new ApiResponse(200, post, "Post downvoted successfully"));
+    res.status(200).json({ success: true, post, message: "Post downvoted successfully" });
 });
 
 // Save post
@@ -355,17 +363,17 @@ export const savePost = asyncHandler(async (req, res) => {
 
     const post = await Post.findById(id);
     if (!post) {
-        throw new ApiError(404, "Post not found");
+        throw new ErrorHandler("Post not found", 404);
     }
 
     const user = await User.findById(userId);
     if (!user) {
-        throw new ApiError(404, "User not found");
+        throw new ErrorHandler("User not found", 404);
     }
 
     // Check if post is already saved
     if (user.savedPosts.includes(id)) {
-        throw new ApiError(400, "Post already saved");
+        throw new ErrorHandler("Post already saved", 400);
     }
 
     // Add post to user's saved posts
@@ -381,7 +389,7 @@ export const savePost = asyncHandler(async (req, res) => {
         id
     );
 
-    res.status(200).json(new ApiResponse(200, null, "Post saved successfully"));
+    res.status(200).json({ success: true, message: "Post saved successfully" });
 });
 
 // Unsave post
@@ -391,17 +399,17 @@ export const unsavePost = asyncHandler(async (req, res) => {
 
     const post = await Post.findById(id);
     if (!post) {
-        throw new ApiError(404, "Post not found");
+        throw new ErrorHandler("Post not found", 404);
     }
 
     const user = await User.findById(userId);
     if (!user) {
-        throw new ApiError(404, "User not found");
+        throw new ErrorHandler("User not found", 404);
     }
 
     // Check if post is saved
     if (!user.savedPosts.includes(id)) {
-        throw new ApiError(400, "Post not saved");
+        throw new ErrorHandler("Post not saved", 400);
     }
 
     // Remove post from user's saved posts
@@ -417,7 +425,7 @@ export const unsavePost = asyncHandler(async (req, res) => {
         id
     );
 
-    res.status(200).json(new ApiResponse(200, null, "Post unsaved successfully"));
+    res.status(200).json({ success: true, message: "Post unsaved successfully" });
 });
 
 // Get saved posts for the authenticated user
@@ -427,22 +435,24 @@ export const getSavedPosts = asyncHandler(async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user) {
-        throw new ApiError(404, "User not found");
+        throw new ErrorHandler("User not found", 404);
     }
 
     const savedPostIds = user.savedPosts;
 
     if (savedPostIds.length === 0) {
-        return res.status(200).json(new ApiResponse(200, {
+        return res.status(200).json({
+            success: true,
             posts: [],
             totalPages: 0,
             currentPage: page,
-            totalPosts: 0
-        }, "No saved posts found"));
+            totalPosts: 0,
+            message: "No saved posts found"
+        });
     }
 
     const posts = await Post.find({ _id: { $in: savedPostIds } })
-        .populate('author_id', 'username avatar')
+        .populate('author', 'username avatar')
         .populate('community_id', 'title members')
         .sort({ createdAt: -1 })
         .limit(limit * 1)
@@ -450,10 +460,12 @@ export const getSavedPosts = asyncHandler(async (req, res) => {
 
     const totalPosts = savedPostIds.length;
 
-    res.status(200).json(new ApiResponse(200, {
+    res.status(200).json({
+        success: true,
         posts,
         totalPages: Math.ceil(totalPosts / limit),
         currentPage: page,
-        totalPosts
-    }, "Saved posts fetched successfully"));
+        totalPosts,
+        message: "Saved posts fetched successfully"
+    });
 });

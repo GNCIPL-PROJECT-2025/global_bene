@@ -181,7 +181,7 @@ const Navbar = ({ user, notificationsCount = 0 }) => {
                   <DropdownMenuLabel>
                     <div className="flex flex-col">
                       <span className="font-medium">{user.fullName}</span>
-                      <span className="text-sm text-muted-foreground">u/{user.fullName?.toLowerCase().replace(' ', '')}</span>
+                      <span className="text-sm text-muted-foreground">u/{user.username}</span>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -314,7 +314,7 @@ const Navbar = ({ user, notificationsCount = 0 }) => {
                     </Avatar>
                     <div>
                       <p className="font-medium">{user.fullName}</p>
-                      <p className="text-sm text-muted-foreground">u/{user.fullName?.toLowerCase().replace(' ', '')}</p>
+                      <p className="text-sm text-muted-foreground">u/{user.username}</p>
                     </div>
                   </div>
                   <Button variant="ghost" onClick={() => { navigate('/profile'); setIsMobileMenuOpen(false); }} className="w-full justify-start">

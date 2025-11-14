@@ -3,13 +3,15 @@ import mongoose from "mongoose";
 // Database Connection Function
 const connectDB = async () => {
     try {
-        const connectionInstance = await mongoose.connect(`${process.env.CONNECTIONSTRING}/${process.env.DBNAME}`)
-        console.log(`\nconnected to store -- DB HOST: ${connectionInstance.connection}`)
+        const connectionString = process.env.MONGO_URI;
+        console.log(`Attempting to connect to MongoDB with URI: ${connectionString.replace(/:([^:@]{1})[^:@]*@/, ':****@')}`);
+        const connectionInstance = await mongoose.connect(connectionString);
+        console.log(`\n✅ Database connected successfully!`);
     }
 
     catch (error) {
-        console.log("Unable to connect tp store--\nconnectionError: ", error)
-        process.exit(1)
+        console.log("Unable to connect to store--\nconnectionError: ", error);
+        process.exit(1);
     }
 }
 

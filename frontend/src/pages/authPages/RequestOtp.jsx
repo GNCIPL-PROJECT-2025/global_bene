@@ -51,11 +51,8 @@ const RequestOtp = () => {
     setLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // In real app, make API call to request OTP
-      console.log('OTP requested for:', { method, contact });
+      // Make API call to request OTP
+      await sendOtp({ email: contact.trim() });
 
       // Navigate to verify OTP page with the contact info
       navigate('/verify-otp', {
@@ -66,7 +63,7 @@ const RequestOtp = () => {
         }
       });
     } catch (error) {
-      setErrors({ general: 'Failed to send OTP. Please try again.' });
+      setErrors({ general: error.response?.data?.message || 'Failed to send OTP. Please try again.' });
     } finally {
       setLoading(false);
     }

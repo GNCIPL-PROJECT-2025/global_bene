@@ -54,7 +54,7 @@ passport.use(
         // Create new user
         const newUser = new User({
           googleId: profile.id,
-          fullName: profile.displayName,
+          username: profile.displayName,
           email: profile.emails[0].value,
           avatar: {
             public_id: profile.photos[0]?.value ? 'google_' + profile.id : null,

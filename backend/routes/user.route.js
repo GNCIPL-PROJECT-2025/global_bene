@@ -15,6 +15,11 @@ import {
     updateUserProfile,
     deleteUser,
     updateUserAvatar,
+    followUser,
+    unfollowUser,
+    getUserFollowers,
+    getUserFollowing,
+    getUserProfileByUsername,
     googleAuthCallback,
     refreshAccessToken
 } from "../controllers/user.controller.js";
@@ -34,7 +39,7 @@ router.route("/register").post(registerUser)
 router.route("/login").post(loginUser)
 
 // *OTP routes
-router.route("/send-otp").get(verifyJWT, sendOtpToUser)
+router.route("/send-otp").post(sendOtpToUser)
 router.route("/verify-otp").post(verifyOtpForUser)
 
 // *Forgot password flow
@@ -47,7 +52,12 @@ router.route("/dashboard").get(verifyJWT, getLoggedInUserInfo)
 router.route("/update-profile").put(verifyJWT, updateUserProfile)
 router.route("/update-avatar").put(verifyJWT, upload.single("avatar"), updateUserAvatar)
 router.route("/delete-profile").delete(verifyJWT, deleteUser)
+router.route("/follow/:targetUserId").post(verifyJWT, followUser)
+router.route("/unfollow/:targetUserId").post(verifyJWT, unfollowUser)
+router.route("/:userId/followers").get(verifyJWT, getUserFollowers)
+router.route("/:userId/following").get(verifyJWT, getUserFollowing)
 router.route("/logout").get(verifyJWT, logoutUser)
+router.route("/profile/:username").get(verifyJWT, getUserProfileByUsername)
 router.route("/refresh-token").post(refreshAccessToken)
 
 

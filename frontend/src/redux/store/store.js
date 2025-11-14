@@ -5,6 +5,7 @@ import postReducer from '../slice/post.slice';
 import communityReducer from '../slice/community.slice';
 import commentReducer from '../slice/comment.slice';
 import notificationReducer from '../slice/notification.slice';
+import adminReducer from '../slice/admin.slice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     community: communityReducer,
     comment: commentReducer,
     notification: notificationReducer,
+    admin: adminReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

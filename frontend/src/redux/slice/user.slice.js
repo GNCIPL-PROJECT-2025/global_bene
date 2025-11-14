@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getCurrentUser, updateUserProfile, updateUserAvatar, changePassword, deleteUserAccount, getUserPosts, getUserComments, getUserStats } from '../../api/user.api';
+import { getCurrentUser, updateUserProfile, updateUserAvatar, changePassword, deleteUserAccount, getUserPosts, getUserComments, getUserStats, followUser as followUserApi, unfollowUser as unfollowUserApi, getUserFollowers as getUserFollowersApi, getUserFollowing as getUserFollowingApi } from '../../api/user.api';
 import { setUser } from './auth.slice';
 
 // Async thunks
@@ -116,15 +116,93 @@ export const fetchUserStats = createAsyncThunk(
   }
 );
 
+export const followUser = createAsyncThunk(
+  'user/followUser',
+  async (targetUserId, { rejectWithValue, dispatch, getState }) => {
+    try {
+      const response = await followUserApi(targetUserId);
+      // Update the current user's following count in auth state
+      const { auth } = getState();
+      if (auth.user) {
+        const updatedUser = {
+          ...auth.user,
+          num_following: (auth.user.num_following || 0) + 1
+        };
+        dispatch(setUser(updatedUser));
+      }
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to follow user');
+    }
+  }
+);
+
+export const unfollowUser = createAsyncThunk(
+  'user/unfollowUser',
+  async (targetUserId, { rejectWithValue, dispatch, getState }) => {
+    try {
+      const response = await unfollowUserApi(targetUserId);
+      // Update the current user's following count in auth state
+      const { auth } = getState();
+      if (auth.user) {
+        const updatedUser = {
+          ...auth.user,
+          num_following: Math.max((auth.user.num_following || 0) - 1, 0)
+        };
+        dispatch(setUser(updatedUser));
+      }
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to unfollow user');
+    }
+  }
+);
+
+export const fetchUserFollowers = createAsyncThunk(
+  'user/fetchFollowers',
+  async ({ userId, page = 1, limit = 10 }, { rejectWithValue }) => {
+    try {
+      const response = await getUserFollowersApi(userId, { page, limit });
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch user followers');
+    }
+  }
+);
+
+export const fetchUserFollowing = createAsyncThunk(
+  'user/fetchFollowing',
+  async ({ userId, page = 1, limit = 10 }, { rejectWithValue }) => {
+    try {
+      const response = await getUserFollowingApi(userId, { page, limit });
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch user following');
+    }
+  }
+);
+
 const userSlice = createSlice({
   name: 'user',
   initialState: {
     profile: null,
     posts: [],
     comments: [],
+    followers: [],
+    following: [],
     stats: null,
     loading: false,
     error: null,
+    followersPagination: {
+      currentPage: 1,
+      totalPages: 1,
+      totalFollowers: 0
+    },
+    followingPagination: {
+      currentPage: 1,
+      totalPages: 1,
+      totalFollowing: 0
+    }
   },
   reducers: {
     clearUserError: (state) => {
@@ -244,6 +322,66 @@ const userSlice = createSlice({
         state.stats = action.payload.stats || action.payload;
       })
       .addCase(fetchUserStats.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Follow user
+      .addCase(followUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(followUser.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(followUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Unfollow user
+      .addCase(unfollowUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(unfollowUser.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(unfollowUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Fetch followers
+      .addCase(fetchUserFollowers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserFollowers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.followers = action.payload.followers || action.payload;
+        state.followersPagination = {
+          currentPage: action.payload.currentPage || 1,
+          totalPages: action.payload.totalPages || 1,
+          totalFollowers: action.payload.totalFollowers || 0
+        };
+      })
+      .addCase(fetchUserFollowers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Fetch following
+      .addCase(fetchUserFollowing.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserFollowing.fulfilled, (state, action) => {
+        state.loading = false;
+        state.following = action.payload.following || action.payload;
+        state.followingPagination = {
+          currentPage: action.payload.currentPage || 1,
+          totalPages: action.payload.totalPages || 1,
+          totalFollowing: action.payload.totalFollowing || 0
+        };
+      })
+      .addCase(fetchUserFollowing.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

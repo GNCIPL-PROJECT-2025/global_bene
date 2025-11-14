@@ -20,6 +20,9 @@ import AboutPage from '@/pages/publicPages/AboutPage';
 import ContactPage from '@/pages/publicPages/ContactPage';
 import PrivacyPolicyPage from '@/pages/publicPages/PrivacyPolicyPage';
 import TermsConditionPage from '@/pages/publicPages/TermsConditionPage';
+import AdminDashboard from '@/pages/adminPages/AdminDashboard';
+import UserManagement from '@/pages/adminPages/UserManagement';
+import CommunityPage from '@/pages/publicPages/CommunityPage';
 
 const App = () => {
   return (
@@ -34,9 +37,11 @@ const App = () => {
           <Route path="/request-otp" element={<RequestOtp />} />
           <Route path="/verify-otp" element={<VerifyOtp />} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/u/:username" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/saved-posts" element={<ProtectedRoute><SavedPostsPage /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
           <Route path="/communities" element={<ExploreCommunities />} />
+          <Route path="/r/:communityName" element={<CommunityPage />} />
           <Route path="/create-community" element={<ProtectedRoute><CreateCommunityPage /></ProtectedRoute>} />
           <Route path="/create-post" element={<ProtectedRoute><CreatePostPage /></ProtectedRoute>} />
           <Route path="/post/:postId" element={<ProtectedRoute><PostDetailPage /></ProtectedRoute>} />
@@ -44,6 +49,8 @@ const App = () => {
           <Route path="/help" element={<ContactPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsConditionPage />} />
+          <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><UserManagement /></ProtectedRoute>} />
           {/* Add more routes as needed */}
         </Routes>
       </div>

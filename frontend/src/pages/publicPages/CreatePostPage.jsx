@@ -70,10 +70,6 @@ const CreatePostPage = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!selectedCommunity) {
-      newErrors.community = 'Please select a community';
-    }
-
     if (!title.trim()) {
       newErrors.title = 'Title is required';
     } else if (title.length > 300) {
@@ -125,7 +121,9 @@ const CreatePostPage = () => {
     try {
       const formData = new FormData();
       formData.append('title', title.trim());
-      formData.append('communityId', selectedCommunity);
+      if (selectedCommunity && selectedCommunity !== 'none') {
+        formData.append('communityId', selectedCommunity);
+      }
       formData.append('type', postType);
 
       // Add content based on post type
@@ -187,12 +185,13 @@ const CreatePostPage = () => {
           <Card>
             <CardContent className="p-6">
               <div className="space-y-2">
-                <Label className="text-sm font-semibold">Choose a community</Label>
+                <Label className="text-sm font-semibold">Choose a community (optional)</Label>
                 <Select value={selectedCommunity} onValueChange={setSelectedCommunity}>
                   <SelectTrigger className={errors.community ? 'border-red-500' : ''}>
-                    <SelectValue placeholder="Select a community" />
+                    <SelectValue placeholder="Select a community (optional)" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">No community (general post)</SelectItem>
                     {communitiesLoading ? (
                       <div className="p-2 text-sm text-muted-foreground">Loading communities...</div>
                     ) : communities.length > 0 ? (
@@ -212,6 +211,9 @@ const CreatePostPage = () => {
                     {errors.community}
                   </div>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  You can post to a specific community or create a general post visible to all users.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -379,7 +381,7 @@ const CreatePostPage = () => {
           </Card>
 
           {/* Preview Card */}
-          {selectedCommunity && title && (
+          {title && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Preview</CardTitle>
@@ -389,15 +391,24 @@ const CreatePostPage = () => {
                   <div className="flex items-start gap-3">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user?.avatar?.secure_url} />
-                      <AvatarFallback>{user?.fullName?.[0]?.toUpperCase()}</AvatarFallback>
+                      <AvatarFallback>{user?.username?.[0]?.toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                        <span className="font-medium">u/{user?.fullName?.toLowerCase().replace(' ', '')}</span>
-                        <span>in</span>
-                        <Badge variant="secondary" className="text-xs">
-                          g/{communities.find(c => c._id === selectedCommunity)?.name || selectedCommunity}
-                        </Badge>
+                        <span className="font-medium">u/{user?.username}</span>
+                        {selectedCommunity && selectedCommunity !== 'none' && (
+                          <>
+                            <span>in</span>
+                            <Badge variant="secondary" className="text-xs">
+                              g/{communities.find(c => c._id === selectedCommunity)?.title || selectedCommunity}
+                            </Badge>
+                          </>
+                        )}
+                        {(!selectedCommunity || selectedCommunity === 'none') && (
+                          <Badge variant="outline" className="text-xs">
+                            General Post
+                          </Badge>
+                        )}
                       </div>
                       <h3 className="font-semibold text-lg mb-2">{title}</h3>
 

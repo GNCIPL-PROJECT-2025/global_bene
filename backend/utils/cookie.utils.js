@@ -7,7 +7,7 @@ const cookieToken = async (user, res) => {
 
     const options = {
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === 'production', // Secure only in production
         maxAge: 3 * 24 * 60 * 60 * 1000,  // 7 days in milliseconds
         sameSite: "Strict"
     }

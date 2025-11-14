@@ -248,12 +248,14 @@ const postSlice = createSlice({
       })
       .addCase(fetchPosts.fulfilled, (state, action) => {
         state.loading = false;
-        state.posts = action.payload.posts || [];
-        state.pagination = {
-          currentPage: action.payload.currentPage || 1,
-          totalPages: action.payload.totalPages || 1,
-          totalPosts: action.payload.totalPosts || 0
-        };
+        if (action.payload) {
+          state.posts = action.payload.posts || [];
+          state.pagination = {
+            currentPage: action.payload.currentPage || 1,
+            totalPages: action.payload.totalPages || 1,
+            totalPosts: action.payload.totalPosts || 0
+          };
+        }
       })
       .addCase(fetchPosts.rejected, (state, action) => {
         state.loading = false;
