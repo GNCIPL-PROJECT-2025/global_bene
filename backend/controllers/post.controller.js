@@ -58,8 +58,7 @@ export const createPost = asyncHandler(async (req, res) => {
         url: url || "",
         tags: tags || [],
         status: req.newReport ? 'flagged' : 'active',
-        spamScore: req.newReport?.spamScore ? req.newReport.spamScore : 0,    // if available then set else 0
-        toxicityScore: req.newReport?.toxicityScore ? req.newReport.toxicityScore : 0 // if available then set else 0
+        label: req.newReport ? req.newReport.label : 'safe'
     });
 
 
@@ -69,8 +68,7 @@ export const createPost = asyncHandler(async (req, res) => {
     if (req.newReport) {
         try {
             // remove extra fields from report
-            delete req.newReport?.spamScore;
-            delete req.newReport?.toxicityScore;
+            delete req.newReport?.label;
 
             req.newReport.target_type = "Post";
             req.newReport.target_id = post._id;
@@ -185,8 +183,7 @@ export const updatePost = asyncHandler(async (req, res) => {
 
     post.title = title || post.title;
     post.body = body || post.body;
-    post.spamScore = req.newReport?.spamScore ? req.newReport.spamScore : post.spamScore;    // if available then set else keep old
-    post.toxicityScore = req.newReport?.toxicityScore ? req.newReport.toxicityScore : post.toxicityScore; // if available then set else keep old
+    post.label = req.newReport ? req.newReport.label : 'safe';
     post.status = req.newReport ? 'flagged' : 'active';
 
 
@@ -194,8 +191,7 @@ export const updatePost = asyncHandler(async (req, res) => {
     if (req.newReport) {
         try {
             // remove extra fields from report
-            delete req.newReport?.spamScore;
-            delete req.newReport?.toxicityScore;
+            delete req.newReport?.label;
 
             req.newReport.target_type = "Post";
             req.newReport.target_id = post._id;

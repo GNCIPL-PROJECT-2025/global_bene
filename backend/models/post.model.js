@@ -68,13 +68,9 @@ const postSchema = new Schema({
         type: Boolean,
         default: false
     },
-    spamScore: {
-        type: Number,
-        default: 0
-    },
-    toxicityScore: {
-        type: Number,
-        default: 0
+    label:{
+        type: String,
+        default: 'safe'
     }
 }, {
     timestamps: true
