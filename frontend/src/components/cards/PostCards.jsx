@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, MessageCircle, Share, Bookmark, Plus, Check, X, Copy, Twitter, Facebook } from 'lucide-react';
+import { ArrowUp, ArrowDown, MessageCircle, Share, Bookmark, Plus, Check, X, Copy, Twitter, Facebook, AlertTriangle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
@@ -30,11 +30,14 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
     type = 'text',
     media,
     url,
-    score = 0
+    score = 0,
+    status,
+    spamScore = 0,
+    toxicityScore = 0
   } = post;
 
   // Get community data from Redux state instead of post's embedded data
-  const communityId = typeof community === 'string' ? community : community._id;
+  const communityId = typeof community === 'string' ? community : community?._id;
   const communityData = communities.find(c => c._id === communityId);
   
   // Fallback to embedded community data if global data not available
@@ -50,6 +53,10 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isLoadingSave, setIsLoadingSave] = useState(false);
+
+  // Check if post should show warning
+  const shouldShowWarning = status === 'flagged' || status === 'removed' || spamScore > 0.5 || toxicityScore > 0.5;
+  const isRemoved = status === 'removed';
 
   const handleJoinToggle = async () => {
     if (!communityId || !user || communityLoading) return;
@@ -220,6 +227,22 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
             </motion.button>
           </div>
         </CardHeader>
+
+        {/* Warning */}
+        {shouldShowWarning && (
+          <div className={`px-6 py-2 border-b ${isRemoved ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'}`}>
+            <div className={`flex items-center gap-2 ${isRemoved ? 'text-red-800' : 'text-yellow-800'}`}>
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span className="text-sm font-medium">
+                {isRemoved 
+                  ? 'This post has been removed by the author or moderator.'
+                  : 'This post has been flagged for review due to potential spam or inappropriate content.'
+                }
+              </span>
+            </div>
+          </div>
+        )}
+
         <CardContent>
           <div className="flex gap-3">
             {/* Post content */}

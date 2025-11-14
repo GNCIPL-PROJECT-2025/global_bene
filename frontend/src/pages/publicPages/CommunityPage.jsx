@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Loader } from '@/components/common/Loader';
 import PostCard from '@/components/cards/PostCards';
+import EditCommunityModal from '@/components/common/EditCommunityModal';
+import ManageMembersModal from '@/components/common/ManageMembersModal';
 import { getCommunityByName, joinCommunity, leaveCommunity } from '@/redux/slice/community.slice';
 import { fetchPostsByCommunity } from '@/redux/slice/post.slice';
 import {
@@ -44,6 +46,9 @@ const CommunityPage = () => {
   const [isMember, setIsMember] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showManageMembersModal, setShowManageMembersModal] = useState(false);
+  const [updatedCommunity, setUpdatedCommunity] = useState(null);
 
   useEffect(() => {
     if (communityName) {
@@ -89,6 +94,10 @@ const CommunityPage = () => {
     }
   };
 
+  const handleMembersUpdate = (updatedCommunityData) => {
+    setUpdatedCommunity(updatedCommunityData);
+  };
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -102,6 +111,9 @@ const CommunityPage = () => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+  // Use updatedCommunity for display if available, otherwise use currentCommunity
+  const displayCommunity = updatedCommunity || currentCommunity;
+
   if (loading) {
     return (
       <MainLayout>
@@ -112,7 +124,7 @@ const CommunityPage = () => {
     );
   }
 
-  if (error || !currentCommunity) {
+  if (error || !displayCommunity) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center min-h-64">
@@ -137,10 +149,10 @@ const CommunityPage = () => {
       <div className="space-y-6">
         {/* Community Banner */}
         <div className="relative h-48 md:h-64 lg:h-80 rounded-lg overflow-hidden">
-          {currentCommunity.banner?.secure_url ? (
+          {displayCommunity.banner?.secure_url ? (
             <img
-              src={currentCommunity.banner.secure_url}
-              alt={`${currentCommunity.title} banner`}
+              src={displayCommunity.banner.secure_url}
+              alt={`${displayCommunity.title} banner`}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -150,7 +162,7 @@ const CommunityPage = () => {
                   <MessageSquare className="w-8 h-8 md:w-10 md:h-10 text-primary" />
                 </div>
                 <h2 className="text-xl md:text-2xl font-bold text-foreground">
-                  {currentCommunity.title}
+                  {displayCommunity.title}
                 </h2>
               </div>
             </div>
@@ -159,17 +171,17 @@ const CommunityPage = () => {
           <div className="absolute bottom-4 left-4 md:bottom-6 md:left-6">
             <div className="flex items-end gap-4">
               <Avatar className="w-16 h-16 md:w-20 md:h-20 border-4 border-white">
-                <AvatarImage src={currentCommunity.avatar?.secure_url} alt={currentCommunity.title} />
+                <AvatarImage src={displayCommunity.avatar?.secure_url} alt={displayCommunity.title} />
                 <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                  {getInitials(currentCommunity.title)}
+                  {getInitials(displayCommunity.title)}
                 </AvatarFallback>
               </Avatar>
               <div className="text-white">
                 <h1 className="text-2xl md:text-3xl font-bold mb-1">
-                  {currentCommunity.title}
+                  {displayCommunity.title}
                 </h1>
                 <p className="text-sm md:text-base opacity-90">
-                  r/{currentCommunity.name} • {currentCommunity.members_count} members
+                  r/{displayCommunity.name} • {displayCommunity.members_count} members
                 </p>
               </div>
             </div>
@@ -190,14 +202,14 @@ const CommunityPage = () => {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground leading-relaxed">
-                  {currentCommunity.description}
+                  {displayCommunity.description}
                 </p>
                 <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
-                    Created {formatDate(currentCommunity.createdAt)}
+                    Created {formatDate(displayCommunity.createdAt)}
                   </div>
-                  {currentCommunity.is_private && (
+                  {displayCommunity.is_private && (
                     <Badge variant="secondary">Private</Badge>
                   )}
                 </div>
@@ -205,7 +217,7 @@ const CommunityPage = () => {
             </Card>
 
             {/* Rules */}
-            {currentCommunity.rules && currentCommunity.rules.length > 0 && (
+            {displayCommunity.rules && displayCommunity.rules.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -215,7 +227,7 @@ const CommunityPage = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {currentCommunity.rules.map((rule, index) => (
+                    {displayCommunity.rules.map((rule, index) => (
                       <div key={index} className="flex gap-3">
                         <div className="shrink-0 w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center text-sm font-medium text-primary">
                           {index + 1}
@@ -340,13 +352,13 @@ const CommunityPage = () => {
               <CardContent>
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10">
-                    <AvatarImage src={currentCommunity.creator_id.avatar?.secure_url} />
+                    <AvatarImage src={displayCommunity.creator_id.avatar?.secure_url} />
                     <AvatarFallback>
-                      {getInitials(currentCommunity.creator_id.username)}
+                      {getInitials(displayCommunity.creator_id.username)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{currentCommunity.creator_id.username || 'User'}</p>
+                    <p className="font-medium">{displayCommunity.creator_id.username || 'User'}</p>
                     <p className="text-sm text-muted-foreground">Community Creator</p>
                   </div>
                 </div>
@@ -354,7 +366,7 @@ const CommunityPage = () => {
             </Card>
 
             {/* Moderators */}
-            {currentCommunity.moderators && currentCommunity.moderators.length > 0 && (
+            {displayCommunity.moderators && displayCommunity.moderators.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -364,7 +376,7 @@ const CommunityPage = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {currentCommunity.moderators.map((moderator) => (
+                    {displayCommunity.moderators.map((moderator) => (
                       <div key={moderator._id} className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
                           <AvatarImage src={moderator.avatar?.secure_url} />
@@ -395,7 +407,7 @@ const CommunityPage = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Members</span>
-                    <span className="text-sm font-medium">{currentCommunity.members_count}</span>
+                    <span className="text-sm font-medium">{displayCommunity.members_count}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Online</span>
@@ -403,7 +415,7 @@ const CommunityPage = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Created</span>
-                    <span className="text-sm font-medium">{formatDate(currentCommunity.createdAt)}</span>
+                    <span className="text-sm font-medium">{formatDate(displayCommunity.createdAt)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -420,11 +432,11 @@ const CommunityPage = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    <Button variant="outline" size="sm" className="w-full justify-start">
+                    <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowEditModal(true)}>
                       <Edit className="w-4 h-4 mr-2" />
                       Edit Community
                     </Button>
-                    <Button variant="outline" size="sm" className="w-full justify-start">
+                    <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowManageMembersModal(true)}>
                       <Users className="w-4 h-4 mr-2" />
                       Manage Members
                     </Button>
@@ -435,6 +447,22 @@ const CommunityPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Edit Community Modal */}
+      <EditCommunityModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        community={displayCommunity}
+      />
+
+      {/* Manage Members Modal */}
+      <ManageMembersModal
+        isOpen={showManageMembersModal}
+        onClose={() => setShowManageMembersModal(false)}
+        community={displayCommunity}
+        isCreator={isCreator}
+        onMembersUpdate={handleMembersUpdate}
+      />
     </MainLayout>
   );
 };

@@ -267,7 +267,7 @@ const postSlice = createSlice({
       })
       .addCase(fetchPosts.fulfilled, (state, action) => {
         state.loading = false;
-        state.posts = action.payload.posts || [];
+        state.posts = (action.payload.posts || []).filter(post => post && post._id);
         state.pagination = {
           currentPage: action.payload.currentPage || 1,
           totalPages: action.payload.totalPages || 1,
@@ -288,9 +288,9 @@ const postSlice = createSlice({
         // If it's page 1, replace, otherwise append
         const currentPage = action.payload.currentPage || 1;
         if (currentPage === 1) {
-          state.communityPosts = action.payload.posts || [];
+          state.communityPosts = (action.payload.posts || []).filter(post => post && post._id);
         } else {
-          state.communityPosts = [...state.communityPosts, ...(action.payload.posts || [])];
+          state.communityPosts = [...state.communityPosts, ...(action.payload.posts || []).filter(post => post && post._id)];
         }
         state.communityPagination = {
           currentPage: action.payload.currentPage || 1,
@@ -410,7 +410,7 @@ const postSlice = createSlice({
       })
       .addCase(fetchSavedPosts.fulfilled, (state, action) => {
         state.loading = false;
-        state.savedPosts = action.payload.posts || [];
+        state.savedPosts = (action.payload.posts || []).filter(post => post && post._id);
         state.savedPostsPagination = {
           currentPage: action.payload.currentPage || 1,
           totalPages: action.payload.totalPages || 1,

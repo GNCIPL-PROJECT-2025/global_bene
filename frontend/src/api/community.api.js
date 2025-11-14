@@ -64,7 +64,34 @@ export const leaveCommunity = async (communityId) => {
 // Update community
 export const updateCommunity = async (communityId, updateData) => {
   try {
-    const response = await axiosInstance.put(`/communities/${communityId}`, updateData);
+    const formDataToSend = new FormData();
+
+    // Add non-file fields
+    if (updateData.description !== undefined) {
+      formDataToSend.append('description', updateData.description);
+    }
+    if (updateData.rules !== undefined) {
+      formDataToSend.append('rules', JSON.stringify(updateData.rules));
+    }
+    if (updateData.is_private !== undefined) {
+      formDataToSend.append('is_private', updateData.is_private);
+    }
+
+    // Add avatar file if provided
+    if (updateData.avatar) {
+      formDataToSend.append('avatar', updateData.avatar);
+    }
+
+    // Add banner file if provided
+    if (updateData.banner) {
+      formDataToSend.append('banner', updateData.banner);
+    }
+
+    const response = await axiosInstance.put(`/communities/${communityId}`, formDataToSend, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data.data;
   } catch (error) {
     throw error.response?.data || error;
@@ -76,6 +103,42 @@ export const deleteCommunity = async (communityId) => {
   try {
     const response = await axiosInstance.delete(`/communities/${communityId}`);
     return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Remove member from community
+export const removeMemberFromCommunity = async (communityId, memberId) => {
+  try {
+    const response = await axiosInstance.post(`/communities/${communityId}/remove-member`, {
+      memberId
+    });
+    return response.data.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Promote member to moderator
+export const promoteToModerator = async (communityId, memberId) => {
+  try {
+    const response = await axiosInstance.post(`/communities/${communityId}/promote-moderator`, {
+      memberId
+    });
+    return response.data.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Demote moderator to member
+export const demoteFromModerator = async (communityId, memberId) => {
+  try {
+    const response = await axiosInstance.post(`/communities/${communityId}/demote-moderator`, {
+      memberId
+    });
+    return response.data.data;
   } catch (error) {
     throw error.response?.data || error;
   }
