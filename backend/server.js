@@ -56,6 +56,8 @@ io.on('connection', (socket) => {
 global.io = io;
 
 import { User } from "./models/user.model.js";
+import { Community } from "./models/community.model.js";
+import { Post } from "./models/post.model.js";
 
 // Connecting to Database and starting the server
 connectDB()
@@ -73,6 +75,93 @@ connectDB()
       });
       await admin.save();
       console.log("Default admin user created: admin@globalbene.com / admin123");
+    }
+
+    // Create sample communities and posts if none exist
+    const communityCount = await Community.countDocuments();
+    const postCount = await Post.countDocuments();
+    if (communityCount === 0 || postCount === 0) {
+      console.log("Creating sample communities and posts...");
+
+      // Create sample user
+      const sampleUser = new User({
+        username: "sampleuser",
+        email: "user@example.com",
+        password: "password123",
+        role: "user",
+        phone: "8888888888",
+        gender: "male"
+      });
+      await sampleUser.save();
+
+      // Create sample communities
+      const techCommunity = new Community({
+        name: "technology",
+        title: "Technology",
+        description: "Discuss the latest in technology, programming, and innovation.",
+        creator_id: {
+          _id: sampleUser._id,
+          username: sampleUser.username,
+          avatar: sampleUser.avatar
+        },
+        members: [sampleUser._id],
+        moderators: [sampleUser._id],
+        members_count: 1
+      });
+      await techCommunity.save();
+
+      const gamingCommunity = new Community({
+        name: "gaming",
+        title: "Gaming",
+        description: "Talk about video games, gaming news, and gaming culture.",
+        creator_id: {
+          _id: sampleUser._id,
+          username: sampleUser.username,
+          avatar: sampleUser.avatar
+        },
+        members: [sampleUser._id],
+        moderators: [sampleUser._id],
+        members_count: 1
+      });
+      await gamingCommunity.save();
+
+      // Create sample posts
+      const post1 = new Post({
+        title: "Welcome to Global Bene!",
+        body: "This is a sample post to demonstrate the platform. Feel free to explore and create your own content!",
+        author: sampleUser._id,
+        community_id: techCommunity._id,
+        type: "text"
+      });
+      await post1.save();
+
+      const post2 = new Post({
+        title: "Latest Gaming Trends",
+        body: "What are your thoughts on the current gaming industry? Share your favorite games and upcoming releases.",
+        author: sampleUser._id,
+        community_id: gamingCommunity._id,
+        type: "text"
+      });
+      await post2.save();
+
+      const post3 = new Post({
+        title: "Programming Tips",
+        body: "Here are some useful programming tips:\n\n1. Write clean, readable code\n2. Test your code thoroughly\n3. Keep learning new technologies\n4. Collaborate with others\n\nWhat are your favorite programming practices?",
+        author: sampleUser._id,
+        community_id: techCommunity._id,
+        type: "text"
+      });
+      await post3.save();
+
+      const post4 = new Post({
+        title: "General Discussion",
+        body: "This is a general post visible to all users on the home page. Welcome to our community platform!",
+        author: sampleUser._id,
+        type: "text"
+      });
+      await post4.save();
+
+      console.log("Sample data created successfully!");
     }
 
     const PORT = process.env.PORT || 3000;

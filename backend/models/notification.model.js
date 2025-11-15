@@ -3,17 +3,14 @@ import mongoose, { Schema } from "mongoose";
 const notificationSchema = new Schema({
     user: {
         type: Schema.Types.ObjectId,
-        ref: "User",
-        required: true
+        ref: "User"
     },
     type: {
         type: String,
-        enum: ["upvote", "downvote", "comment", "reply", "mention", "follow", "community_invite"],
-        required: true
+        enum: ["upvote", "downvote", "comment", "reply", "mention", "follow", "community_invite"]
     },
     message: {
-        type: String,
-        required: true
+        type: String
     },
     relatedPost: {
         type: Schema.Types.ObjectId,
@@ -30,6 +27,26 @@ const notificationSchema = new Schema({
     isRead: {
         type: Boolean,
         default: false
+    },
+    // New fields for notification system
+    notificationCategory: {
+        type: String
+    },
+    channel: {
+        type: String,
+        enum: ["EMAIL", "MOBILE"]
+    },
+    templateId: {
+        type: Schema.Types.ObjectId,
+        ref: "NotificationTemplate"
+    },
+    scheduledAt: {
+        type: Date
+    },
+    status: {
+        type: String,
+        enum: ["PENDING", "SENT", "FAILED"],
+        default: "PENDING"
     }
 }, {
     timestamps: true

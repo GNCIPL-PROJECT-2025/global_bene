@@ -3,6 +3,14 @@ import axiosInstance from './axiosInstance';
 
 // Create a new comment
 export const createComment = async (commentData) => {
+  // Validate input before sending
+  if (!commentData.body || typeof commentData.body !== 'string' || commentData.body.trim() === '') {
+    throw new Error('Comment body is required');
+  }
+  if (!commentData.postId) {
+    throw new Error('postId is required');
+  }
+
   try {
     const response = await axiosInstance.post('/comments', commentData);
     return response.data.data;

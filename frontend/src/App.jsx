@@ -23,6 +23,7 @@ import TermsConditionPage from '@/pages/publicPages/TermsConditionPage';
 import AdminDashboard from '@/pages/adminPages/AdminDashboard';
 import UserManagement from '@/pages/adminPages/UserManagement';
 import CommunityPage from '@/pages/publicPages/CommunityPage';
+import SearchPage from '@/pages/publicPages/SearchPage';
 
 const App = () => {
   return (
@@ -40,6 +41,7 @@ const App = () => {
           <Route path="/u/:username" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/saved-posts" element={<ProtectedRoute><SavedPostsPage /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/communities" element={<ExploreCommunities />} />
           <Route path="/r/:communityName" element={<CommunityPage />} />
           <Route path="/create-community" element={<ProtectedRoute><CreateCommunityPage /></ProtectedRoute>} />

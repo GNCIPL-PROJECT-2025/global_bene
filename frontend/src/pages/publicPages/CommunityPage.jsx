@@ -29,6 +29,7 @@ import {
   upvotePost,
   downvotePost
 } from '../../redux/slice/post.slice';
+import CommunityManagementModal from '../../components/common/CommunityManagementModal';
 
 const CommunityPage = () => {
   const { communityName } = useParams();
@@ -40,10 +41,10 @@ const CommunityPage = () => {
   const [isJoined, setIsJoined] = useState(false);
   const [localLoading, setLocalLoading] = useState(false);
   const [communityPosts, setCommunityPosts] = useState([]);
+  const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
 
   useEffect(() => {
-    // For now, we'll assume communityName is actually the ID
-    // TODO: Modify backend to support fetching by name
+    // Fetch community by name (backend supports both ID and name)
     if (communityName) {
       dispatch(getCommunityById(communityName));
     }
@@ -237,11 +238,14 @@ const CommunityPage = () => {
                         </Button>
 
                         {(isModerator || isCreator) && (
-                          <Button variant="outline">
-                            <Settings className="h-4 w-4 mr-2" />
-                            Manage
-                          </Button>
-                        )}
+                           <Button
+                             variant="outline"
+                             onClick={() => setIsManagementModalOpen(true)}
+                           >
+                             <Settings className="h-4 w-4 mr-2" />
+                             Manage
+                           </Button>
+                         )}
                       </div>
                     </div>
 
@@ -402,6 +406,13 @@ const CommunityPage = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Community Management Modal */}
+        <CommunityManagementModal
+          isOpen={isManagementModalOpen}
+          onClose={() => setIsManagementModalOpen(false)}
+          community={currentCommunity}
+        />
       </div>
     </MainLayout>
   );

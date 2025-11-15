@@ -5,8 +5,8 @@ import { logActivity } from "../utils/logActivity.utils.js";
 // ================== USER: GET MY ACTIVITY ==================
 export const getMyActivityLogs = async (req, res) => {
     try {
-        const log = await UserInteractionLog.findOne({ user: req.user._id })
-            .populate("user", "fullName email role");
+        const log = await UserInteractionLog.findOne({ user_id: req.user._id })
+            .populate("user_id", "username email role");
 
         if (!log) {
             return res.status(404).json({ message: "No activity logs found for this user" });
@@ -39,10 +39,10 @@ export const getAllActivityLogs = async (req, res) => {
         const { userId, action } = req.query;
 
         let filter = {};
-        if (userId) filter.user = userId;
+        if (userId) filter.user_id = userId;
 
         let logs = await UserInteractionLog.find(filter)
-            .populate("user", "fullName email role");
+            .populate("user_id", "username email role");
 
         // Optional: filter activities by action
         if (action) {
@@ -86,7 +86,7 @@ export const clearUserLogs = async (req, res) => {
     try {
         const { id } = req.params; // userId
 
-        const log = await UserInteractionLog.findOne({ user: id });
+        const log = await UserInteractionLog.findOne({ user_id: id });
         if (!log) {
             return res.status(404).json({ message: "No logs found for this user" });
         }

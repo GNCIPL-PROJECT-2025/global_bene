@@ -6,6 +6,8 @@ import {
   joinCommunity as joinCommunityApi,
   leaveCommunity as leaveCommunityApi,
   updateCommunity as updateCommunityApi,
+  addModerator as addModeratorApi,
+  removeModerator as removeModeratorApi,
   deleteCommunity as deleteCommunityApi
 } from '../../api/community.api';
 
@@ -78,6 +80,30 @@ export const updateCommunity = createAsyncThunk(
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update community');
+    }
+  }
+);
+
+export const addModerator = createAsyncThunk(
+  'community/addModerator',
+  async ({ communityId, userId }, { rejectWithValue }) => {
+    try {
+      const response = await addModeratorApi(communityId, userId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to add moderator');
+    }
+  }
+);
+
+export const removeModerator = createAsyncThunk(
+  'community/removeModerator',
+  async ({ communityId, userId }, { rejectWithValue }) => {
+    try {
+      const response = await removeModeratorApi(communityId, userId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to remove moderator');
     }
   }
 );
@@ -226,6 +252,48 @@ const communitySlice = createSlice({
         }
       })
       .addCase(updateCommunity.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Add Moderator
+      .addCase(addModerator.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(addModerator.fulfilled, (state, action) => {
+        state.loading = false;
+        // Update the community in the list if it exists
+        const index = state.communities.findIndex(c => c._id === action.payload._id);
+        if (index !== -1) {
+          state.communities[index] = action.payload;
+        }
+        // Update current community if it's the one being updated
+        if (state.currentCommunity && state.currentCommunity._id === action.payload._id) {
+          state.currentCommunity = action.payload;
+        }
+      })
+      .addCase(addModerator.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Remove Moderator
+      .addCase(removeModerator.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(removeModerator.fulfilled, (state, action) => {
+        state.loading = false;
+        // Update the community in the list if it exists
+        const index = state.communities.findIndex(c => c._id === action.payload._id);
+        if (index !== -1) {
+          state.communities[index] = action.payload;
+        }
+        // Update current community if it's the one being updated
+        if (state.currentCommunity && state.currentCommunity._id === action.payload._id) {
+          state.currentCommunity = action.payload;
+        }
+      })
+      .addCase(removeModerator.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

@@ -1,18 +1,22 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/common/Loader';
-import { Users, FileText, MessageSquare, Building, TrendingUp } from 'lucide-react';
-import { getAdminStats } from '../../redux/slice/admin.slice';
+import { Users, FileText, MessageSquare, Building, TrendingUp, Activity } from 'lucide-react';
+import { getAdminStats, getAllActivityLogs } from '../../redux/slice/admin.slice';
+import { formatDistanceToNow } from 'date-fns';
 
 const AdminDashboard = () => {
   const dispatch = useDispatch();
-  const { stats, loading, error } = useSelector((state) => state.admin);
+  const navigate = useNavigate();
+  const { stats, activityLogs, loading, error } = useSelector((state) => state.admin);
 
   useEffect(() => {
     dispatch(getAdminStats());
+    dispatch(getAllActivityLogs());
   }, [dispatch]);
 
   const statCards = [
@@ -134,15 +138,15 @@ const AdminDashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/users')}>
                   <Users className="mr-2 h-4 w-4" />
                   Manage Users
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/search')}>
                   <FileText className="mr-2 h-4 w-4" />
                   View Posts
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/communities')}>
                   <Building className="mr-2 h-4 w-4" />
                   Manage Communities
                 </Button>
@@ -157,9 +161,27 @@ const AdminDashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Activity logging feature coming soon...
-                </p>
+                {activityLogs && activityLogs.length > 0 ? (
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {activityLogs.slice(0, 10).map((log, index) => (
+                      <div key={index} className="flex items-start gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-800">
+                        <Activity className="h-4 w-4 mt-0.5 text-blue-600" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {log.user_id?.username || 'Unknown User'}
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {log.activities?.[0]?.event_type || 'Activity'} • {formatDistanceToNow(new Date(log.activities?.[0]?.timestamp), { addSuffix: true })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    No recent activity found.
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>

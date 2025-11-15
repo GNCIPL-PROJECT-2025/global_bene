@@ -14,19 +14,28 @@ import { getAllCommunities } from '@/redux/slice/community.slice';
 const LandingPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { posts, loading: postsLoading, error: postsError } = useSelector(state => state.post);
+  const { posts, loading: postsLoading, error: postsError, pagination } = useSelector(state => state.post);
   const { communities, loading: communitiesLoading } = useSelector(state => state.community);
-  const [sortBy, setSortBy] = useState('hot');
+  const [sortBy, setSortBy] = useState('top');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    // Fetch real posts from API
-    const params = {
-      sortBy: sortBy === 'hot' ? 'createdAt' : sortBy,
-      page: 1,
-      limit: 100
+    console.log('LandingPage: Fetching posts with sortBy:', sortBy, 'page:', currentPage);
+    // Fetch posts from API with pagination
+    const sortMapping = {
+      hot: 'createdAt',
+      new: 'createdAt',
+      trending: 'score',
+      top: 'top'
     };
+    const params = {
+      sortBy: sortMapping[sortBy] || sortBy,
+      page: currentPage,
+      limit: 20 // Reasonable limit for pagination
+    };
+    console.log('LandingPage: Dispatching fetchPosts with params:', params);
     dispatch(fetchPosts(params));
-  }, [dispatch, sortBy]);
+  }, [dispatch, sortBy, currentPage]);
 
   useEffect(() => {
     // Fetch communities
@@ -150,6 +159,29 @@ const LandingPage = () => {
                 </div>
               )}
             </div>
+
+            {/* Pagination */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="flex justify-center items-center space-x-4 mt-8">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1 || postsLoading}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {pagination.currentPage} of {pagination.totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, pagination.totalPages))}
+                  disabled={currentPage === pagination.totalPages || postsLoading}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

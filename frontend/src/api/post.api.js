@@ -12,7 +12,7 @@ export const createPost = async (postData) => {
       }
     };
     const response = await axiosInstance.post('/posts', postData, config);
-    return response.data.data;
+    return response.data.post;
   } catch (error) {
     throw error.response?.data || error;
   }
@@ -21,9 +21,12 @@ export const createPost = async (postData) => {
 // Get all posts with optional filtering
 export const getAllPosts = async (params = {}) => {
   try {
+    console.log('API: Fetching posts with params:', params);
     const response = await axiosInstance.get('/posts', { params });
-    return response.data.data;
+    console.log('API: Posts response:', response.data);
+    return response.data;
   } catch (error) {
+    console.error('API: Error fetching posts:', error);
     throw error.response?.data || error;
   }
 };
@@ -32,7 +35,7 @@ export const getAllPosts = async (params = {}) => {
 export const getPostById = async (postId) => {
   try {
     const response = await axiosInstance.get(`/posts/${postId}`);
-    return response.data.data;
+    return response.data.post;
   } catch (error) {
     throw error.response?.data || error;
   }
@@ -62,7 +65,7 @@ export const deletePost = async (postId) => {
 export const upvotePost = async (postId) => {
   try {
     const response = await axiosInstance.post(`/posts/${postId}/upvote`);
-    return response.data.data;
+    return response.data.post;
   } catch (error) {
     throw error.response?.data || error;
   }
@@ -72,7 +75,7 @@ export const upvotePost = async (postId) => {
 export const downvotePost = async (postId) => {
   try {
     const response = await axiosInstance.post(`/posts/${postId}/downvote`);
-    return response.data.data;
+    return response.data.post;
   } catch (error) {
     throw error.response?.data || error;
   }
@@ -103,6 +106,16 @@ export const getSavedPosts = async (params = {}) => {
   try {
     const response = await axiosInstance.get('/posts/saved', { params });
     return response.data.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Search posts, communities, and users
+export const search = async (params = {}) => {
+  try {
+    const response = await axiosInstance.get('/posts/search', { params });
+    return response.data;
   } catch (error) {
     throw error.response?.data || error;
   }

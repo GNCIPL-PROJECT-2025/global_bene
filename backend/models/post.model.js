@@ -56,6 +56,14 @@ const postSchema = new Schema({
         enum: ['flagged', 'removed', 'active'],
         default: 'active'
     },
+    spamScore: {
+        type: Number,
+        default: null
+    },
+    toxicityScore: {
+        type: Number,
+        default: null
+    },
     score: {
         type: Number,
         default: 0

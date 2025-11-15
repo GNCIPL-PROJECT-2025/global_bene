@@ -42,6 +42,14 @@ const commentSchema = new Schema({
         enum: ['flagged', 'removed', 'active'],
         default: 'active'
     },
+    spamScore: {
+        type: Number,
+        default: 0
+    },
+    toxicityScore: {
+        type: Number,
+        default: 0
+    },
     score: {
         type: Number,
         default: 0

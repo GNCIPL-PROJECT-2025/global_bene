@@ -664,13 +664,13 @@ const getLoggedInUserInfo = asyncHandler(async (req, res, next) => {
     // Calculate stats
     const [postsCount, commentsCount, upvotesCount, downvotesCount, communitiesCount] = await Promise.all([
         // Count posts by user
-        mongoose.model('Post').countDocuments({ author_id: userId }),
+        mongoose.model('Post').countDocuments({ author: userId }),
         // Count comments by user
         mongoose.model('Comment').countDocuments({ author_id: userId }),
         // Count upvotes received on user's posts and comments
         Promise.all([
             mongoose.model('Post').aggregate([
-                { $match: { author_id: userId } },
+                { $match: { author: userId } },
                 { $project: { upvotesCount: { $size: "$upvotes" } } },
                 { $group: { _id: null, total: { $sum: "$upvotesCount" } } }
             ]),
@@ -687,7 +687,7 @@ const getLoggedInUserInfo = asyncHandler(async (req, res, next) => {
         // Count downvotes received on user's posts and comments
         Promise.all([
             mongoose.model('Post').aggregate([
-                { $match: { author_id: userId } },
+                { $match: { author: userId } },
                 { $project: { downvotesCount: { $size: "$downvotes" } } },
                 { $group: { _id: null, total: { $sum: "$downvotesCount" } } }
             ]),
@@ -997,6 +997,89 @@ const googleAuthCallback = asyncHandler(async (req, res, next) => {
     }
 });
 
+// *Send Email Verification
+const sendEmailVerification = asyncHandler(async (req, res, next) => {
+    const userId = req.user._id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    if (user.isVerified) {
+        return next(new ErrorHandler("User is already verified", 400));
+    }
+
+    const OTP = await user.generateVerificationCode();
+    await user.save();
+
+    try {
+        const message = generateEmailTemplate(OTP);
+        const mailResponse = await sendEmail({
+            email: user.email,
+            subject: "EMAIL VERIFICATION CODE",
+            message
+        });
+        return res.status(200).json({
+            success: true,
+            message: `Verification code sent to ${user.email}`
+        });
+
+    } catch (error) {
+        return next(new ErrorHandler(`Unable to send email to ${user.email}\n Error ${error.message || error}`, 400));
+    }
+});
+
+// *Verify Email
+const verifyEmail = asyncHandler(async (req, res, next) => {
+    const { otp } = req.body;
+    const userId = req.user._id;
+
+    if (!otp) {
+        return next(new ErrorHandler("OTP is required", 400));
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    if (user.isVerified) {
+        return next(new ErrorHandler("User is already verified", 400));
+    }
+
+    if (!user.verificationCode || user.verificationCode !== Number(otp)) {
+        return next(new ErrorHandler("Invalid OTP", 400));
+    }
+
+    if (user.verificationCodeExpire < Date.now()) {
+        return next(new ErrorHandler("OTP expired", 400));
+    }
+
+    user.isVerified = true;
+    user.verificationCode = undefined;
+    user.verificationCodeExpire = undefined;
+
+    await user.save({ validateBeforeSave: false });
+
+    await logActivity(
+        userId,
+        "verify-email",
+        `${user.username} verified email`,
+        req,
+        'user',
+        userId
+    );
+
+    const resUser = await User.findById(userId).select("-password -refreshToken");
+    return res.status(200).json({
+        success: true,
+        message: "Email verified successfully",
+        user: resUser
+    });
+});
+
 // *Exports
 export {
     refreshAccessToken,
@@ -1017,5 +1100,7 @@ export {
     getUserFollowers,
     getUserFollowing,
     getUserProfileByUsername,
-    googleAuthCallback
+    googleAuthCallback,
+    sendEmailVerification,
+    verifyEmail
 }

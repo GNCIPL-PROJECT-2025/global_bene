@@ -29,7 +29,8 @@ import {
   X,
   Sun,
   Moon,
-  Bookmark
+  Bookmark,
+  Shield
 } from 'lucide-react';
 import { logout } from '@/redux/slice/auth.slice';
 
@@ -197,6 +198,12 @@ const Navbar = ({ user, notificationsCount = 0 }) => {
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </DropdownMenuItem>
+                  {user.role === 'admin' && (
+                    <DropdownMenuItem onClick={() => navigate('/admin/dashboard')}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Admin Dashboard
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
@@ -222,7 +229,13 @@ const Navbar = ({ user, notificationsCount = 0 }) => {
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => navigate('/search')}
+              onClick={() => {
+                if (searchQuery.trim()) {
+                  navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+                } else {
+                  navigate('/search');
+                }
+              }}
               className="p-2 rounded-full hover:bg-muted transition-colors"
             >
               <Search className="h-5 w-5 text-muted-foreground" />
@@ -329,6 +342,12 @@ const Navbar = ({ user, notificationsCount = 0 }) => {
                     <Settings className="h-4 w-4 mr-2" />
                     Settings
                   </Button>
+                  {user.role === 'admin' && (
+                    <Button variant="ghost" onClick={() => { navigate('/admin/dashboard'); setIsMobileMenuOpen(false); }} className="w-full justify-start">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Admin Dashboard
+                    </Button>
+                  )}
                   <Button variant="ghost" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50">
                     <LogOut className="h-4 w-4 mr-2" />
                     Log out

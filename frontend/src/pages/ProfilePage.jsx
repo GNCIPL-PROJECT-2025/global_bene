@@ -16,7 +16,7 @@ import CommentCard from '@/components/cards/CommentCard';
 import { fetchUserProfile, updateProfile, updateAvatar, followUser, unfollowUser, fetchUserFollowers, fetchUserFollowing } from '@/redux/slice/user.slice';
 import { getUserPosts } from '@/api/post.api';
 import { getUserComments } from '@/api/comment.api';
-import { getUserProfileByUsername } from '@/api/user.api';
+import { getUserProfileByUsername, sendEmailVerification } from '@/api/user.api';
 import { getAllCommunities } from '@/redux/slice/community.slice';
 import {
   User,
@@ -52,6 +52,11 @@ const ProfilePage = () => {
   const [followLoading, setFollowLoading] = useState(false);
   const [profileUser, setProfileUser] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [followers, setFollowers] = useState([]);
+  const [following, setFollowing] = useState([]);
+  const [followersLoading, setFollowersLoading] = useState(false);
+  const [followingLoading, setFollowingLoading] = useState(false);
+  const [verificationLoading, setVerificationLoading] = useState(false);
   const navigate = useNavigate();
   const { username } = useParams();
   const dispatch = useDispatch();
@@ -106,6 +111,10 @@ const ProfilePage = () => {
       fetchUserPosts();
     } else if (activeTab === 'comments' && profileUser && userComments.length === 0) {
       fetchUserComments();
+    } else if (activeTab === 'followers' && profileUser && followers.length === 0) {
+      fetchUserFollowers();
+    } else if (activeTab === 'following' && profileUser && following.length === 0) {
+      fetchUserFollowing();
     }
   }, [activeTab, profileUser]);
 
@@ -201,6 +210,34 @@ const ProfilePage = () => {
     }
   };
 
+  const fetchUserFollowers = async () => {
+    if (!profileUser?._id) return;
+
+    try {
+      setFollowersLoading(true);
+      const response = await dispatch(fetchUserFollowers({ userId: profileUser._id })).unwrap();
+      setFollowers(response.followers || []);
+    } catch (error) {
+      console.error('Failed to fetch user followers:', error);
+    } finally {
+      setFollowersLoading(false);
+    }
+  };
+
+  const fetchUserFollowing = async () => {
+    if (!profileUser?._id) return;
+
+    try {
+      setFollowingLoading(true);
+      const response = await dispatch(fetchUserFollowing({ userId: profileUser._id })).unwrap();
+      setFollowing(response.following || []);
+    } catch (error) {
+      console.error('Failed to fetch user following:', error);
+    } finally {
+      setFollowingLoading(false);
+    }
+  };
+
   const handleFollowToggle = async () => {
     if (!profileUser || !isAuthenticated || followLoading) return;
 
@@ -217,6 +254,35 @@ const ProfilePage = () => {
       console.error('Failed to toggle follow status:', error);
     } finally {
       setFollowLoading(false);
+    }
+  };
+
+  const handleFollowToggleForUser = async (targetUserId) => {
+    try {
+      const isCurrentlyFollowing = currentUser.following?.includes(targetUserId);
+      if (isCurrentlyFollowing) {
+        await dispatch(unfollowUser(targetUserId)).unwrap();
+      } else {
+        await dispatch(followUser(targetUserId)).unwrap();
+      }
+    } catch (error) {
+      console.error('Failed to toggle follow status for user:', error);
+    }
+  };
+
+  const handleSendVerificationEmail = async () => {
+    if (verificationLoading) return;
+
+    setVerificationLoading(true);
+    try {
+      await sendEmailVerification();
+      // Show success message (you can add toast notification here)
+      alert('Verification email sent successfully!');
+    } catch (error) {
+      console.error('Failed to send verification email:', error);
+      alert('Failed to send verification email. Please try again.');
+    } finally {
+      setVerificationLoading(false);
     }
   };
 
@@ -485,6 +551,25 @@ const ProfilePage = () => {
                       Member since {formatDate(profileUser.createdAt)}
                     </div>
                   </div>
+
+                  {!profileUser.isVerified && isOwnProfile && (
+                    <div className="mt-4">
+                      <Button
+                        onClick={handleSendVerificationEmail}
+                        disabled={verificationLoading}
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                      >
+                        {verificationLoading ? (
+                          <Loader size="sm" />
+                        ) : (
+                          <Mail className="w-4 h-4 mr-2" />
+                        )}
+                        Send Verification Email
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -557,47 +642,119 @@ const ProfilePage = () => {
           </TabsContent>
 
           <TabsContent value="followers" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Followers ({profileUser.num_followers || 0})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {profileUser.num_followers > 0 ? (
-                  <div className="text-center py-8">
-                    <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Followers list will be displayed here</p>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-foreground mb-2">No followers yet</h3>
-                    <p className="text-muted-foreground">When people follow {isOwnProfile ? 'you' : 'this user'}, they'll appear here.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {followersLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader size="lg" />
+              </div>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Followers ({profileUser.num_followers || 0})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {followers.length > 0 ? (
+                    <div className="space-y-4">
+                      {followers.map((follower) => (
+                        <div key={follower._id} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarImage src={follower.avatar?.secure_url} alt={follower.username} />
+                              <AvatarFallback>{follower.username?.[0]?.toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <Link
+                                to={`/u/${follower.username}`}
+                                className="font-medium hover:text-blue-600 transition-colors"
+                              >
+                                {follower.username}
+                              </Link>
+                              {follower.bio && (
+                                <p className="text-sm text-muted-foreground truncate max-w-xs">
+                                  {follower.bio}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {!isOwnProfile && currentUser && currentUser._id !== follower._id && (
+                            <Button
+                              variant={currentUser.following?.includes(follower._id) ? "outline" : "default"}
+                              size="sm"
+                              onClick={() => handleFollowToggleForUser(follower._id)}
+                            >
+                              {currentUser.following?.includes(follower._id) ? 'Following' : 'Follow'}
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-foreground mb-2">No followers yet</h3>
+                      <p className="text-muted-foreground">When people follow {isOwnProfile ? 'you' : 'this user'}, they'll appear here.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="following" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Following ({profileUser.num_following || 0})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {profileUser.num_following > 0 ? (
-                  <div className="text-center py-8">
-                    <UserPlus className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Following list will be displayed here</p>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <UserPlus className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-foreground mb-2">Not following anyone yet</h3>
-                    <p className="text-muted-foreground">When {isOwnProfile ? 'you follow' : 'this user follows'} people, they'll appear here.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {followingLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader size="lg" />
+              </div>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Following ({profileUser.num_following || 0})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {following.length > 0 ? (
+                    <div className="space-y-4">
+                      {following.map((followedUser) => (
+                        <div key={followedUser._id} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarImage src={followedUser.avatar?.secure_url} alt={followedUser.username} />
+                              <AvatarFallback>{followedUser.username?.[0]?.toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <Link
+                                to={`/u/${followedUser.username}`}
+                                className="font-medium hover:text-blue-600 transition-colors"
+                              >
+                                {followedUser.username}
+                              </Link>
+                              {followedUser.bio && (
+                                <p className="text-sm text-muted-foreground truncate max-w-xs">
+                                  {followedUser.bio}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {!isOwnProfile && currentUser && currentUser._id !== followedUser._id && (
+                            <Button
+                              variant={currentUser.following?.includes(followedUser._id) ? "outline" : "default"}
+                              size="sm"
+                              onClick={() => handleFollowToggleForUser(followedUser._id)}
+                            >
+                              {currentUser.following?.includes(followedUser._id) ? 'Following' : 'Follow'}
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <UserPlus className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-foreground mb-2">Not following anyone yet</h3>
+                      <p className="text-muted-foreground">When {isOwnProfile ? 'you follow' : 'this user follows'} people, they'll appear here.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {isOwnProfile && (

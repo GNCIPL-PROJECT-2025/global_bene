@@ -137,3 +137,23 @@ export const getUserProfileByUsername = async (username) => {
     throw error.response?.data || error;
   }
 };
+
+// Send email verification
+export const sendEmailVerification = async () => {
+  try {
+    const response = await axiosInstance.post('/users/send-email-verification');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Verify email
+export const verifyEmail = async (otp) => {
+  try {
+    const response = await axiosInstance.post('/users/verify-email', { otp });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

@@ -55,7 +55,8 @@ const CommentCard = ({
     downvotes = [],
     replies_count = 0,
     score = 0,
-    createdAt
+    createdAt,
+    status
   } = comment;
 
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -161,9 +162,10 @@ const CommentCard = ({
   };
 
   const getDepthStyling = () => {
-    if (depth === 0) return "bg-card border border-border/50";
-    if (depth === 1) return "bg-muted/30 border-l-4 border-l-primary/40";
-    return "bg-muted/20 border-l-2 border-l-muted-foreground/30";
+    const baseStyling = status === 'flagged' ? "bg-yellow-100 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700" : "";
+    if (depth === 0) return `${baseStyling} bg-card border border-border/50`;
+    if (depth === 1) return `${baseStyling} bg-muted/30 border-l-4 border-l-primary/40`;
+    return `${baseStyling} bg-muted/20 border-l-2 border-l-muted-foreground/30`;
   };
 
   return (

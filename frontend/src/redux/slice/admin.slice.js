@@ -7,6 +7,11 @@ import {
   adminChangeUserRole as adminChangeUserRoleApi,
   getAdminStats as getAdminStatsApi,
   adminDeleteUser as adminDeleteUserApi,
+  getAllActivityLogs as getAllActivityLogsApi,
+  clearUserLogs as clearUserLogsApi,
+  adminAddMemberToCommunity as adminAddMemberToCommunityApi,
+  adminRemoveMemberFromCommunity as adminRemoveMemberFromCommunityApi,
+  adminDeletePost as adminDeletePostApi,
 } from '../../api/admin.api';
 
 // Async thunks
@@ -94,12 +99,73 @@ export const adminDeleteUser = createAsyncThunk(
   }
 );
 
+export const getAllActivityLogs = createAsyncThunk(
+  'admin/getAllActivityLogs',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await getAllActivityLogsApi(params);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch activity logs');
+    }
+  }
+);
+
+export const clearUserLogs = createAsyncThunk(
+  'admin/clearUserLogs',
+  async (userId, { rejectWithValue }) => {
+    try {
+      const response = await clearUserLogsApi(userId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to clear user logs');
+    }
+  }
+);
+
+export const adminAddMemberToCommunity = createAsyncThunk(
+  'admin/addMemberToCommunity',
+  async ({ communityId, userId }, { rejectWithValue }) => {
+    try {
+      const response = await adminAddMemberToCommunityApi(communityId, userId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to add member to community');
+    }
+  }
+);
+
+export const adminRemoveMemberFromCommunity = createAsyncThunk(
+  'admin/removeMemberFromCommunity',
+  async ({ communityId, userId }, { rejectWithValue }) => {
+    try {
+      const response = await adminRemoveMemberFromCommunityApi(communityId, userId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to remove member from community');
+    }
+  }
+);
+
+export const adminDeletePost = createAsyncThunk(
+  'admin/deletePost',
+  async (postId, { rejectWithValue }) => {
+    try {
+      const response = await adminDeletePostApi(postId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete post');
+    }
+  }
+);
+
 const adminSlice = createSlice({
   name: 'admin',
   initialState: {
     users: [],
     selectedUser: null,
     stats: null,
+    activityLogs: [],
     loading: false,
     error: null,
   },
@@ -226,6 +292,32 @@ const adminSlice = createSlice({
         }
       })
       .addCase(adminDeleteUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Get all activity logs
+      .addCase(getAllActivityLogs.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getAllActivityLogs.fulfilled, (state, action) => {
+        state.loading = false;
+        state.activityLogs = action.payload.logs || [];
+      })
+      .addCase(getAllActivityLogs.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Clear user logs
+      .addCase(clearUserLogs.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(clearUserLogs.fulfilled, (state, action) => {
+        state.loading = false;
+        // Optionally update the activity logs if needed
+      })
+      .addCase(clearUserLogs.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

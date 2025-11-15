@@ -9,6 +9,8 @@ import {
     joinCommunity,
     leaveCommunity,
     updateCommunity,
+    addModerator,
+    removeModerator,
     deleteCommunity
 } from "../controllers/community.controller.js";
 
@@ -26,6 +28,8 @@ router.route("/").post(verifyJWT, upload.any(), createCommunity);
 router.route("/:id/join").post(verifyJWT, joinCommunity);
 router.route("/:id/leave").post(verifyJWT, leaveCommunity);
 router.route("/:id").put(verifyJWT, updateCommunity);
+router.route("/:id/moderator").post(verifyJWT, addModerator);
+router.route("/:id/moderator").delete(verifyJWT, removeModerator);
 router.route("/:id").delete(verifyJWT, deleteCommunity);
 
 export default router;

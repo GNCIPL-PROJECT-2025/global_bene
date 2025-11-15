@@ -46,3 +46,33 @@ export const adminDeleteUser = async (userId) => {
   const { data } = await axiosInstance.delete(`/admin/user/${userId}`);
   return data;
 };
+
+// Get all activity logs (admin only)
+export const getAllActivityLogs = async (params = {}) => {
+  const { data } = await axiosInstance.get("/activity-logs/all-activity-logs", { params });
+  return data;
+};
+
+// Clear user logs (admin only)
+export const clearUserLogs = async (userId) => {
+  const { data } = await axiosInstance.delete(`/activity-logs/clear/${userId}`);
+  return data;
+};
+
+// Admin add member to community
+export const adminAddMemberToCommunity = async (communityId, userId) => {
+  const { data } = await axiosInstance.post("/admin/community/add-member", { communityId, userId });
+  return data;
+};
+
+// Admin remove member from community
+export const adminRemoveMemberFromCommunity = async (communityId, userId) => {
+  const { data } = await axiosInstance.post("/admin/community/remove-member", { communityId, userId });
+  return data;
+};
+
+// Admin delete post
+export const adminDeletePost = async (postId) => {
+  const { data } = await axiosInstance.delete(`/admin/post/${postId}`);
+  return data;
+};

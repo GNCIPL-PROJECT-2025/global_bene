@@ -369,12 +369,14 @@ const postSlice = createSlice({
       })
       .addCase(fetchSavedPosts.fulfilled, (state, action) => {
         state.loading = false;
-        state.savedPosts = action.payload.posts || [];
-        state.savedPostsPagination = {
-          currentPage: action.payload.currentPage || 1,
-          totalPages: action.payload.totalPages || 1,
-          totalPosts: action.payload.totalPosts || 0
-        };
+        if (action.payload) {
+          state.savedPosts = action.payload.posts || [];
+          state.savedPostsPagination = {
+            currentPage: action.payload.currentPage || 1,
+            totalPages: action.payload.totalPages || 1,
+            totalPosts: action.payload.totalPosts || 0
+          };
+        }
       })
       .addCase(fetchSavedPosts.rejected, (state, action) => {
         state.loading = false;

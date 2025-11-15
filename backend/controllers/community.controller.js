@@ -229,6 +229,86 @@ export const updateCommunity = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, community, "Community updated successfully"));
 });
 
+// Add moderator (only creator)
+export const addModerator = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { userId } = req.body;
+    const currentUserId = req.user._id;
+
+    const community = await Community.findById(id);
+    if (!community) {
+        throw new ApiError(404, "Community not found");
+    }
+
+    if (community.creator_id._id.toString() !== currentUserId.toString()) {
+        throw new ApiError(403, "Only creator can add moderators");
+    }
+
+    if (!community.members.includes(userId)) {
+        throw new ApiError(400, "User must be a member to become moderator");
+    }
+
+    if (community.moderators.includes(userId)) {
+        throw new ApiError(400, "User is already a moderator");
+    }
+
+    community.moderators.push(userId);
+    await community.save();
+
+    await community.populate('moderators', 'username avatar');
+
+    await logActivity(
+        currentUserId,
+        "add-moderator",
+        `${req.user.username} added moderator to community: ${community.title}`,
+        req,
+        'community',
+        id
+    );
+
+    res.status(200).json(new ApiResponse(200, community, "Moderator added successfully"));
+});
+
+// Remove moderator (only creator)
+export const removeModerator = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { userId } = req.body;
+    const currentUserId = req.user._id;
+
+    const community = await Community.findById(id);
+    if (!community) {
+        throw new ApiError(404, "Community not found");
+    }
+
+    if (community.creator_id._id.toString() !== currentUserId.toString()) {
+        throw new ApiError(403, "Only creator can remove moderators");
+    }
+
+    if (userId.toString() === currentUserId.toString()) {
+        throw new ApiError(400, "Cannot remove yourself as moderator");
+    }
+
+    if (!community.moderators.includes(userId)) {
+        throw new ApiError(400, "User is not a moderator");
+    }
+
+    community.moderators = community.moderators.filter(mod => mod.toString() !== userId.toString());
+    await community.save();
+
+    await community.populate('moderators', 'username avatar');
+
+    await logActivity(
+        currentUserId,
+        "remove-moderator",
+        `${req.user.username} removed moderator from community: ${community.title}`,
+        req,
+        'community',
+        id
+    );
+
+    res.status(200).json(new ApiResponse(200, community, "Moderator removed successfully"));
+});
+
 // Delete community (only creator)
 export const deleteCommunity = asyncHandler(async (req, res) => {
     const { id } = req.params;

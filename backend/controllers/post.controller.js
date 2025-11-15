@@ -3,6 +3,7 @@ import { Post } from "../models/post.model.js";
 import { Community } from "../models/community.model.js";
 import { Notification } from "../models/notification.model.js";
 import { User } from "../models/user.model.js";
+import { SpamPost } from "../models/report.model.js";
 import ErrorHandler from "../middlewares/error.middleware.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.utils.js";
 import { cloudinaryPostRefer } from "../utils/constants.utils.js";
@@ -74,34 +75,71 @@ export const createPost = asyncHandler(async (req, res) => {
     // Increment num_posts for author
     await User.findByIdAndUpdate(author, { $inc: { num_posts: 1 } });
 
+    // If spam detector attached a report object, persist it with target set to this post
+    if (req.newReport) {
+        try {
+            const reportData = {
+                reporter_id: req.newReport.reporter_id || req.user?._id,
+                target_type: 'Post',
+                target_id: post._id,
+                reason: req.newReport.reason || 'Spam/Toxicity detected by ML Service',
+                status: req.newReport.status || 'open',
+                severity: req.newReport.severity || 'low',
+                spamScore: req.newReport.spamScore ?? null,
+                toxicityScore: req.newReport.toxicityScore ?? null
+            };
+            // flag the post and set scores
+            post.status = 'flagged';
+            post.spamScore = reportData.spamScore;
+            post.toxicityScore = reportData.toxicityScore;
+            await post.save();
+            await SpamPost.create(reportData);
+        } catch (e) {
+            console.warn('Failed to persist spam report for post:', e.message);
+        }
+    }
+
     res.status(201).json({ success: true, post, message: "Post created successfully" });
 });
 
 // Get all posts (with pagination and filtering)
 export const getAllPosts = asyncHandler(async (req, res) => {
+    console.log('getAllPosts called with query:', req.query);
     const { page = 1, limit = 10, communityId, sortBy = "createdAt" } = req.query;
 
-    const filter = {};
+    const filter = { status: 'active' };
     if (communityId) {
         filter.community_id = communityId;
     }
 
+    let sortOptions = {};
+    if (sortBy === 'top') {
+        sortOptions = { score: -1, num_comments: -1 };
+    } else {
+        sortOptions = { [sortBy]: -1 };
+    }
+
+    console.log('Filter:', filter);
+    console.log('Sort options:', sortOptions);
+
     const posts = await Post.find(filter)
         .populate('author', 'username avatar')
         .populate('community_id', 'title members')
-        .sort({ [sortBy]: -1 })
+        .sort(sortOptions)
         .limit(limit * 1)
         .skip((page - 1) * limit);
 
     const totalPosts = await Post.countDocuments(filter);
 
+    console.log(`Found ${posts.length} posts out of ${totalPosts} total`);
+
     res.status(200).json({
-        success: true,
-        posts,
-        totalPages: Math.ceil(totalPosts / limit),
-        currentPage: page,
-        totalPosts,
-        message: "Posts fetched successfully"
+      success: true,
+      posts,
+      totalPages: Math.ceil(totalPosts / limit),
+      currentPage: page,
+      totalPosts,
+      message: "Posts fetched successfully"
     });
 });
 
@@ -163,6 +201,27 @@ export const updatePost = asyncHandler(async (req, res) => {
 
     post.title = title || post.title;
     post.body = body || post.body;
+
+    // If spam detector attached a report object, persist it with target set to this post
+    if (req.newReport) {
+        try {
+            const reportData = {
+                reporter_id: req.newReport.reporter_id || req.user?._id,
+                target_type: 'Post',
+                target_id: post._id,
+                reason: req.newReport.reason || 'Spam/Toxicity detected by ML Service',
+                status: req.newReport.status || 'open',
+                spamScore: req.newReport.spamScore ?? null,
+                toxicityScore: req.newReport.toxicityScore ?? null
+            };
+            await SpamPost.create(reportData);
+            post.status = 'flagged';
+            post.spamScore = reportData.spamScore;
+            post.toxicityScore = reportData.toxicityScore;
+        } catch (e) {
+            console.warn('Failed to persist spam report for post update:', e.message);
+        }
+    }
 
     await post.save();
     await post.populate('author', 'username avatar');
@@ -237,7 +296,6 @@ export const upvotePost = asyncHandler(async (req, res) => {
     const hasUpvoted = post.upvotes.includes(userId);
     const hasDownvoted = post.downvotes.includes(userId);
 
-    let notification = null;
     if (hasUpvoted) {
         // Remove upvote
         post.upvotes = post.upvotes.filter(id => id.toString() !== userId.toString());
@@ -257,23 +315,27 @@ export const upvotePost = asyncHandler(async (req, res) => {
             id
         );
 
-        // Create notification if not self-vote
-        if (post.author.toString() !== userId.toString()) {
-            notification = await Notification.create({
-                user: post.author,
-                type: "upvote",
-                message: `${req.user.username} upvoted your post`,
-                relatedPost: id
-            });
+        // Create notification if not self-upvote
+        try {
+            const postAuthorId = post.author?._id ? post.author._id : post.author;
+            if (postAuthorId && postAuthorId.toString() !== userId.toString()) {
+                const notification = await Notification.create({
+                    user: postAuthorId,
+                    type: "upvote",
+                    message: `${req.user?.username || 'Someone'} upvoted your post`,
+                    relatedPost: id
+                });
+                if (global.io) global.io.to(`user_${postAuthorId}`).emit('new-notification', notification);
+            }
+        } catch (e) {
+            console.warn('Failed to create/emit upvote notification for post:', e.message);
         }
     }
 
     // Calculate score
-    post.score = Math.floor((post.upvotes.length - post.downvotes.length) / 2);
+    post.score = post.upvotes.length - post.downvotes.length;
 
     await post.save();
-    await post.populate('upvotes', 'username');
-    await post.populate('downvotes', 'username');
 
     // Emit vote update to post room
     global.io.to(`post_${id}`).emit('vote-updated', {
@@ -281,11 +343,6 @@ export const upvotePost = asyncHandler(async (req, res) => {
         upvotes: post.upvotes,
         downvotes: post.downvotes
     });
-
-    // Emit notification if created
-    if (notification) {
-        global.io.to(`user_${post.author}`).emit('new-notification', notification);
-    }
 
     res.status(200).json({ success: true, post, message: "Post upvoted successfully" });
 });
@@ -303,7 +360,6 @@ export const downvotePost = asyncHandler(async (req, res) => {
     const hasUpvoted = post.upvotes.includes(userId);
     const hasDownvoted = post.downvotes.includes(userId);
 
-    let notification = null;
     if (hasDownvoted) {
         // Remove downvote
         post.downvotes = post.downvotes.filter(id => id.toString() !== userId.toString());
@@ -323,23 +379,27 @@ export const downvotePost = asyncHandler(async (req, res) => {
             id
         );
 
-        // Create notification if not self-vote
-        if (post.author.toString() !== userId.toString()) {
-            notification = await Notification.create({
-                user: post.author,
-                type: "downvote",
-                message: `${req.user.username} downvoted your post`,
-                relatedPost: id
-            });
+        // Create notification if not self-downvote
+        try {
+            const postAuthorId = post.author?._id ? post.author._id : post.author;
+            if (postAuthorId && postAuthorId.toString() !== userId.toString()) {
+                const notification = await Notification.create({
+                    user: postAuthorId,
+                    type: "downvote",
+                    message: `${req.user?.username || 'Someone'} downvoted your post`,
+                    relatedPost: id
+                });
+                if (global.io) global.io.to(`user_${postAuthorId}`).emit('new-notification', notification);
+            }
+        } catch (e) {
+            console.warn('Failed to create/emit downvote notification for post:', e.message);
         }
     }
 
     // Calculate score
-    post.score = Math.floor((post.upvotes.length - post.downvotes.length) / 2);
+    post.score = post.upvotes.length - post.downvotes.length;
 
     await post.save();
-    await post.populate('upvotes', 'username');
-    await post.populate('downvotes', 'username');
 
     // Emit vote update to post room
     global.io.to(`post_${id}`).emit('vote-updated', {
@@ -347,11 +407,6 @@ export const downvotePost = asyncHandler(async (req, res) => {
         upvotes: post.upvotes,
         downvotes: post.downvotes
     });
-
-    // Emit notification if created
-    if (notification) {
-        global.io.to(`user_${post.author}`).emit('new-notification', notification);
-    }
 
     res.status(200).json({ success: true, post, message: "Post downvoted successfully" });
 });
@@ -426,6 +481,91 @@ export const unsavePost = asyncHandler(async (req, res) => {
     );
 
     res.status(200).json({ success: true, message: "Post unsaved successfully" });
+});
+
+// Search posts, communities, and users
+export const search = asyncHandler(async (req, res) => {
+    const { q: query, type = 'all', page = 1, limit = 10 } = req.query;
+
+    if (!query || query.trim() === '') {
+        return res.status(200).json({
+            success: true,
+            results: {
+                posts: [],
+                communities: [],
+                users: []
+            },
+            message: "Search query is required"
+        });
+    }
+
+    const searchRegex = new RegExp(query.trim(), 'i');
+    const results = {
+        posts: [],
+        communities: [],
+        users: []
+    };
+
+    // Search posts
+    if (type === 'all' || type === 'posts') {
+        const posts = await Post.find({
+            $or: [
+                { title: searchRegex },
+                { body: searchRegex },
+                { tags: searchRegex }
+            ],
+            status: 'active'
+        })
+            .populate('author', 'username avatar')
+            .populate('community_id', 'title name')
+            .sort({ score: -1, createdAt: -1 })
+            .limit(limit * 1)
+            .skip((page - 1) * limit);
+
+        results.posts = posts;
+    }
+
+    // Search communities
+    if (type === 'all' || type === 'communities') {
+        const communities = await Community.find({
+            $or: [
+                { title: searchRegex },
+                { name: searchRegex },
+                { description: searchRegex }
+            ]
+        })
+            .select('name title description avatar members_count')
+            .sort({ members_count: -1 })
+            .limit(limit * 1)
+            .skip((page - 1) * limit);
+
+        results.communities = communities;
+    }
+
+    // Search users
+    if (type === 'all' || type === 'users') {
+        const users = await User.find({
+            $or: [
+                { username: searchRegex },
+                { email: searchRegex }
+            ],
+            isVerified: true
+        })
+            .select('username avatar bio num_followers num_following')
+            .sort({ num_followers: -1 })
+            .limit(limit * 1)
+            .skip((page - 1) * limit);
+
+        results.users = users;
+    }
+
+    res.status(200).json({
+        success: true,
+        results,
+        query: query.trim(),
+        type,
+        message: "Search completed successfully"
+    });
 });
 
 // Get saved posts for the authenticated user

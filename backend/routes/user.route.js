@@ -21,7 +21,9 @@ import {
     getUserFollowing,
     getUserProfileByUsername,
     googleAuthCallback,
-    refreshAccessToken
+    refreshAccessToken,
+    sendEmailVerification,
+    verifyEmail
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
@@ -59,6 +61,10 @@ router.route("/:userId/following").get(verifyJWT, getUserFollowing)
 router.route("/logout").get(verifyJWT, logoutUser)
 router.route("/profile/:username").get(verifyJWT, getUserProfileByUsername)
 router.route("/refresh-token").post(refreshAccessToken)
+
+// *Email verification routes
+router.route("/send-email-verification").post(verifyJWT, sendEmailVerification)
+router.route("/verify-email").post(verifyJWT, verifyEmail)
 
 
 export default router;

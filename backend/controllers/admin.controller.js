@@ -15,6 +15,7 @@ import { Community } from "../models/community.model.js";
 import { destroyOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.utils.js";
 import { cloudinaryAvatarRefer } from "../utils/constants.utils.js";
 import { logActivity } from "../utils/logActivity.utils.js";
+import { SpamPost } from "../models/report.model.js";
 
 
 // *================================================================================
@@ -295,7 +296,7 @@ const adminDeleteUser = asyncHandler(async (req, res, next) => {
         await logActivity(
             req.user._id,
             "admin-delete-user",
-            `Admin ${req.user.fullName} deleted user ${user.fullName}`,
+            `Admin ${req.user.username} deleted user ${user.username}`,
             req,
             'user',
             userId
@@ -324,6 +325,261 @@ const adminDeleteUser = asyncHandler(async (req, res, next) => {
     }
 });
 
+// *Admin Add Member to Community
+const adminAddMemberToCommunity = asyncHandler(async (req, res, next) => {
+    const { communityId, userId } = req.body;
+
+    const community = await Community.findById(communityId);
+    if (!community) {
+        return next(new ErrorHandler("Community not found", 404));
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    if (community.members.includes(userId)) {
+        return next(new ErrorHandler("User is already a member of this community", 400));
+    }
+
+    community.members.push(userId);
+    community.members_count = community.members.length;
+    await community.save();
+
+    // Add to user's communities_followed
+    await User.findByIdAndUpdate(userId, { $push: { communities_followed: communityId } });
+
+    await logActivity(
+        req.user._id,
+        "admin-add-member",
+        `Admin ${req.user.username} added ${user.username} to community ${community.title}`,
+        req,
+        'community',
+        communityId
+    );
+
+    res.status(200).json({ success: true, message: "Member added to community successfully" });
+});
+
+// *Admin Remove Member from Community
+const adminRemoveMemberFromCommunity = asyncHandler(async (req, res, next) => {
+    const { communityId, userId } = req.body;
+
+    const community = await Community.findById(communityId);
+    if (!community) {
+        return next(new ErrorHandler("Community not found", 404));
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    if (!community.members.includes(userId)) {
+        return next(new ErrorHandler("User is not a member of this community", 400));
+    }
+
+    community.members = community.members.filter(member => member.toString() !== userId.toString());
+    community.members_count = community.members.length;
+    await community.save();
+
+    // Remove from user's communities_followed
+    await User.findByIdAndUpdate(userId, { $pull: { communities_followed: communityId } });
+
+    await logActivity(
+        req.user._id,
+        "admin-remove-member",
+        `Admin ${req.user.username} removed ${user.username} from community ${community.title}`,
+        req,
+        'community',
+        communityId
+    );
+
+    res.status(200).json({ success: true, message: "Member removed from community successfully" });
+});
+
+// *Admin Delete Post
+const adminDeletePost = asyncHandler(async (req, res, next) => {
+    const { postId } = req.params;
+
+    const post = await Post.findById(postId).populate('author');
+    if (!post) {
+        return next(new ErrorHandler("Post not found", 404));
+    }
+
+    await logActivity(
+        req.user._id,
+        "admin-delete-post",
+        `Admin ${req.user.username} deleted post: ${post.title}`,
+        req,
+        'post',
+        postId
+    );
+
+    // Delete the post
+    await Post.findByIdAndDelete(postId);
+
+    // Decrement num_posts for author
+    await User.findByIdAndUpdate(post.author._id, { $inc: { num_posts: -1 } });
+
+    res.status(200).json({ success: true, message: "Post deleted successfully" });
+});
+
+// *Admin Delete Community
+const adminDeleteCommunity = asyncHandler(async (req, res, next) => {
+    const { communityId } = req.params;
+
+    const community = await Community.findById(communityId).populate('creator_id');
+    if (!community) {
+        return next(new ErrorHandler("Community not found", 404));
+    }
+
+    await logActivity(
+        req.user._id,
+        "admin-delete-community",
+        `Admin ${req.user.username} deleted community: ${community.title}`,
+        req,
+        'community',
+        communityId
+    );
+
+    // Remove community from all members' communities_followed
+    await User.updateMany(
+        { communities_followed: communityId },
+        { $pull: { communities_followed: communityId } }
+    );
+
+    // Delete all posts in the community
+    const posts = await Post.find({ community_id: communityId });
+    for (const post of posts) {
+        await Post.findByIdAndDelete(post._id);
+        // Decrement num_posts for authors
+        await User.findByIdAndUpdate(post.author, { $inc: { num_posts: -1 } });
+    }
+
+    // Delete the community
+    await Community.findByIdAndDelete(communityId);
+
+    res.status(200).json({ success: true, message: "Community deleted successfully" });
+});
+
+
+// ----------------- Spam Reports / Flagged Posts -----------------
+const getSpamReports = asyncHandler(async (req, res) => {
+    const { page = 1, limit = 20 } = req.query;
+    const reports = await SpamPost.find({})
+        .populate('reporter_id', 'username email')
+        .sort({ createdAt: -1 })
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
+
+    const total = await SpamPost.countDocuments({});
+
+    res.status(200).json({ success: true, reports, totalPages: Math.ceil(total / limit), currentPage: page, total });
+});
+
+const getSpamReportById = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const report = await SpamPost.findById(id).populate('reporter_id', 'username email').populate('handled_by', 'username');
+    if (!report) return next(new ErrorHandler('Report not found', 404));
+    res.status(200).json({ success: true, report });
+});
+
+const resolveSpamReport = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { action } = req.body; // 'approve' | 'remove'
+
+    const report = await SpamPost.findById(id);
+    if (!report) return next(new ErrorHandler('Report not found', 404));
+
+    report.status = 'resolved';
+    report.handled_by = req.user._id;
+
+    // Take action if requested
+    if (action === 'approve') {
+        // If the target is a post, unflag it
+        if (report.target_type === 'Post') {
+            const post = await Post.findById(report.target_id);
+            if (post) {
+                post.status = 'active';
+                post.spamScore = null;
+                post.toxicityScore = null;
+                await post.save();
+            }
+        }
+        report.action_taken = 'approved';
+    } else if (action === 'remove') {
+        if (report.target_type === 'Post') {
+            const post = await Post.findById(report.target_id);
+            if (post) {
+                post.status = 'removed';
+                await post.save();
+                // Decrement user's post count
+                await User.findByIdAndUpdate(post.author, { $inc: { num_posts: -1 } });
+            }
+        }
+        report.action_taken = 'removed';
+    }
+
+    await report.save();
+
+    await logActivity(req.user._id, 'admin-handle-spam', `Admin ${req.user.username} resolved spam report ${id}`, req, 'spam', id);
+
+    res.status(200).json({ success: true, report, message: 'Report resolved' });
+});
+
+const getFlaggedPosts = asyncHandler(async (req, res) => {
+    const { page = 1, limit = 20 } = req.query;
+    const posts = await Post.find({ status: 'flagged' })
+        .populate('author', 'username email')
+        .populate('community_id', 'title')
+        .sort({ createdAt: -1 })
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
+
+    const total = await Post.countDocuments({ status: 'flagged' });
+
+    res.status(200).json({ success: true, posts, totalPages: Math.ceil(total / limit), currentPage: page, total });
+});
+
+const adminApproveFlaggedPost = asyncHandler(async (req, res) => {
+    const { postId } = req.params;
+    const post = await Post.findById(postId);
+    if (!post) return next(new ErrorHandler('Post not found', 404));
+
+    post.status = 'active';
+    post.spamScore = null;
+    post.toxicityScore = null;
+    await post.save();
+
+    // Mark related reports as resolved
+    await SpamPost.updateMany({ target_type: 'Post', target_id: postId }, { $set: { status: 'resolved', action_taken: 'approved', handled_by: req.user._id } });
+
+    await logActivity(req.user._id, 'admin-approve-post', `Admin ${req.user.username} approved post ${postId}`, req, 'post', postId);
+
+    res.status(200).json({ success: true, post, message: 'Post approved and unflagged' });
+});
+
+const adminRemoveFlaggedPost = asyncHandler(async (req, res) => {
+    const { postId } = req.params;
+    const post = await Post.findById(postId);
+    if (!post) return next(new ErrorHandler('Post not found', 404));
+
+    post.status = 'removed';
+    await post.save();
+
+    await SpamPost.updateMany({ target_type: 'Post', target_id: postId }, { $set: { status: 'resolved', action_taken: 'removed', handled_by: req.user._id } });
+
+    // Decrement author's post count
+    await User.findByIdAndUpdate(post.author, { $inc: { num_posts: -1 } });
+
+    await logActivity(req.user._id, 'admin-remove-post', `Admin ${req.user.username} removed post ${postId}`, req, 'post', postId);
+
+    res.status(200).json({ success: true, message: 'Post removed' });
+});
+
+
 
 export {
     getAllUsers,
@@ -332,5 +588,17 @@ export {
     adminUpdateUserAvatar,
     adminChangeUserRole,
     adminStats,
-    adminDeleteUser
+    adminDeleteUser,
+    adminAddMemberToCommunity,
+    adminRemoveMemberFromCommunity,
+    adminDeletePost,
+    adminDeleteCommunity
+    ,
+    // spam admin handlers
+    getSpamReports,
+    getSpamReportById,
+    resolveSpamReport,
+    getFlaggedPosts,
+    adminApproveFlaggedPost,
+    adminRemoveFlaggedPost
 }

@@ -23,15 +23,15 @@ export const errorMiddleware = (err, req, res, next) => {
     }
 
     //* JWT Token
-    if (err.name == "JsonWenTokenError") {
-        const message = `Invalid JSON Wen Token, try Agian!`
-        err = new ErrorHandler(message, 400)
+    if (err.name == "JsonWebTokenError") {
+        const message = `Invalid JSON Web Token, try again!`
+        err = new ErrorHandler(message, 401)
     }
 
     //* JWT Expired
     if (err.name == "TokenExpiredError") {
-        const message = `JSON wenToken is Expired, Try again!`
-        err = new ErrorHandler(message, 400)
+        const message = `JSON Web Token is Expired, Try again!`
+        err = new ErrorHandler(message, 401)
     }
 
     //* Duplicate mongoose error
