@@ -22,6 +22,7 @@ import PrivacyPolicyPage from '@/pages/publicPages/PrivacyPolicyPage';
 import TermsConditionPage from '@/pages/publicPages/TermsConditionPage';
 import AdminDashboard from '@/pages/adminPages/AdminDashboard';
 import UserManagement from '@/pages/adminPages/UserManagement';
+import SpamManagement from '@/pages/adminPages/SpamManagement';
 import CommunityPage from '@/pages/publicPages/CommunityPage';
 import SearchPage from '@/pages/publicPages/SearchPage';
 
@@ -53,6 +54,7 @@ const App = () => {
           <Route path="/terms" element={<TermsConditionPage />} />
           <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><UserManagement /></ProtectedRoute>} />
+          <Route path="/admin/spam" element={<ProtectedRoute requiredRole="admin"><SpamManagement /></ProtectedRoute>} />
           {/* Add more routes as needed */}
         </Routes>
       </div>

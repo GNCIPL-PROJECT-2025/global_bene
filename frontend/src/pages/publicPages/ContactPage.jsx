@@ -23,9 +23,23 @@ const ContactPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [adminContact, setAdminContact] = useState(null);
 
   useEffect(() => {
-    // Component mounted
+    // Fetch admin contact info
+    const fetchAdminContact = async () => {
+      try {
+        const response = await fetch('/api/v1/contact/admin-info');
+        const data = await response.json();
+        if (data.success) {
+          setAdminContact(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch admin contact info:', error);
+      }
+    };
+
+    fetchAdminContact();
   }, []);
 
   const handleInputChange = (e) => {
@@ -38,7 +52,7 @@ const ContactPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrors({});
-    
+
     // Validation
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = 'Name is required';
@@ -47,24 +61,45 @@ const ContactPage = () => {
     if (!formData.subject.trim()) newErrors.subject = 'Subject is required';
     if (!formData.message.trim()) newErrors.message = 'Message is required';
     else if (formData.message.trim().length < 10) newErrors.message = 'Message must be at least 10 characters';
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    
+
     setIsSubmitting(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Form submitted:', formData);
-      setSubmitStatus('success');
-      setFormData({ name: '', email: '', subject: '', category: 'general', message: '' });
+
+    try {
+      // Send to backend API
+      const response = await fetch('/api/v1/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSubmitStatus('success');
+        setFormData({ name: '', email: '', subject: '', category: 'general', message: '' });
+      } else {
+        setSubmitStatus('error');
+        setErrors({ general: data.message || 'Failed to send message. Please try again.' });
+      }
+    } catch (error) {
+      console.error('Contact form submission error:', error);
+      setSubmitStatus('error');
+      setErrors({ general: 'Network error. Please check your connection and try again.' });
+    } finally {
       setIsSubmitting(false);
-      
+
       // Clear success message after 5 seconds
-      setTimeout(() => setSubmitStatus(null), 5000);
-    }, 1500);
+      if (submitStatus === 'success') {
+        setTimeout(() => setSubmitStatus(null), 5000);
+      }
+    }
   };
 
   const toggleFaq = (index) => {
@@ -76,7 +111,7 @@ const ContactPage = () => {
       icon: Mail,
       title: 'Email Support',
       description: 'Get help via email within 24 hours',
-      detail: 'support@globalbene.com',
+      detail: adminContact?.email || 'admin@globalbene.com',
       action: 'Send Email',
       color: 'text-blue-500'
     },
@@ -92,7 +127,7 @@ const ContactPage = () => {
       icon: Phone,
       title: 'Phone Support',
       description: 'Speak directly with our team',
-      detail: '+1 (555) 123-4567',
+      detail: adminContact?.phone || 'Contact via email',
       action: 'Call Now',
       color: 'text-purple-500'
     },

@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import { useSelector, useDispatch } from 'react-redux';
 import { addNotification, updateUnreadCount, fetchUnreadCount } from '../redux/slice/notification.slice';
 import { updatePostVotes } from '../redux/slice/post.slice';
-import { addCommentToPost, updateCommentVotes } from '../redux/slice/comment.slice';
+import { addCommentToPost } from '../redux/slice/comment.slice';
 import { requestNotificationPermission, subscribeToPushNotifications } from '../utils/pushNotifications';
 
 const SocketContext = createContext();
@@ -72,10 +72,6 @@ export const SocketProvider = ({ children }) => {
         dispatch(updatePostVotes(data));
       });
 
-      // Listen for comment vote updates
-      socket.on('comment-vote-updated', (data) => {
-        dispatch(updateCommentVotes(data));
-      });
 
       // Cleanup on unmount
       return () => {

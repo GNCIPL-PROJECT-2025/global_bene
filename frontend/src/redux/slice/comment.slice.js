@@ -4,9 +4,7 @@ import {
   getCommentsForPost as getCommentsForPostApi,
   getRepliesForComment as getRepliesForCommentApi,
   updateComment as updateCommentApi,
-  deleteComment as deleteCommentApi,
-  upvoteComment as upvoteCommentApi,
-  downvoteComment as downvoteCommentApi
+  deleteComment as deleteCommentApi
 } from '../../api/comment.api';
 
 // Async thunks
@@ -70,29 +68,6 @@ export const deleteComment = createAsyncThunk(
   }
 );
 
-export const upvoteComment = createAsyncThunk(
-  'comment/upvoteComment',
-  async (commentId, { rejectWithValue }) => {
-    try {
-      const response = await upvoteCommentApi(commentId);
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to upvote comment');
-    }
-  }
-);
-
-export const downvoteComment = createAsyncThunk(
-  'comment/downvoteComment',
-  async (commentId, { rejectWithValue }) => {
-    try {
-      const response = await downvoteCommentApi(commentId);
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to downvote comment');
-    }
-  }
-);
 
 const commentSlice = createSlice({
   name: 'comment',
@@ -176,25 +151,6 @@ const commentSlice = createSlice({
           state.commentsByPost[postId].comments.unshift(comment);
         }
       }
-    },
-    updateCommentVotes: (state, action) => {
-      const { commentId, upvotes, downvotes } = action.payload;
-      // Update in commentsByPost
-      Object.keys(state.commentsByPost).forEach(postId => {
-        const index = state.commentsByPost[postId].comments.findIndex(c => c._id === commentId);
-        if (index !== -1) {
-          state.commentsByPost[postId].comments[index].upvotes = upvotes;
-          state.commentsByPost[postId].comments[index].downvotes = downvotes;
-        }
-      });
-      // Update in repliesByComment
-      Object.keys(state.repliesByComment).forEach(commentId => {
-        const index = state.repliesByComment[commentId].replies.findIndex(r => r._id === commentId);
-        if (index !== -1) {
-          state.repliesByComment[commentId].replies[index].upvotes = upvotes;
-          state.repliesByComment[commentId].replies[index].downvotes = downvotes;
-        }
-      });
     },
     removeCommentFromPost: (state, action) => {
       const { commentId, postId } = action.payload;
@@ -342,44 +298,8 @@ const commentSlice = createSlice({
           state.repliesByComment[commentId].replies = state.repliesByComment[commentId].replies.filter(r => r._id !== deletedCommentId);
         });
       })
-      // Upvote comment
-      .addCase(upvoteComment.fulfilled, (state, action) => {
-        const updatedComment = action.payload;
-        // Update in commentsByPost
-        Object.keys(state.commentsByPost).forEach(postId => {
-          const index = state.commentsByPost[postId].comments.findIndex(c => c._id === updatedComment._id);
-          if (index !== -1) {
-            state.commentsByPost[postId].comments[index] = updatedComment;
-          }
-        });
-        // Update in repliesByComment
-        Object.keys(state.repliesByComment).forEach(commentId => {
-          const index = state.repliesByComment[commentId].replies.findIndex(r => r._id === updatedComment._id);
-          if (index !== -1) {
-            state.repliesByComment[commentId].replies[index] = updatedComment;
-          }
-        });
-      })
-      // Downvote comment
-      .addCase(downvoteComment.fulfilled, (state, action) => {
-        const updatedComment = action.payload;
-        // Update in commentsByPost
-        Object.keys(state.commentsByPost).forEach(postId => {
-          const index = state.commentsByPost[postId].comments.findIndex(c => c._id === updatedComment._id);
-          if (index !== -1) {
-            state.commentsByPost[postId].comments[index] = updatedComment;
-          }
-        });
-        // Update in repliesByComment
-        Object.keys(state.repliesByComment).forEach(commentId => {
-          const index = state.repliesByComment[commentId].replies.findIndex(r => r._id === updatedComment._id);
-          if (index !== -1) {
-            state.repliesByComment[commentId].replies[index] = updatedComment;
-          }
-        });
-      });
   },
 });
 
-export const { clearCommentError, updateCommentInPost, addReplyToComment, addCommentToPost, updateCommentVotes, removeCommentFromPost, removeReplyFromComment } = commentSlice.actions;
+export const { clearCommentError, updateCommentInPost, addReplyToComment, addCommentToPost, removeCommentFromPost, removeReplyFromComment } = commentSlice.actions;
 export default commentSlice.reducer;

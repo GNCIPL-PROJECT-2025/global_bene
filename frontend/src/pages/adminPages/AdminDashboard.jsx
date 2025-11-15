@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/common/Loader';
-import { Users, FileText, MessageSquare, Building, TrendingUp, Activity } from 'lucide-react';
+import { Users, FileText, MessageSquare, Building, TrendingUp, Activity, Shield } from 'lucide-react';
 import { getAdminStats, getAllActivityLogs } from '../../redux/slice/admin.slice';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -149,6 +149,10 @@ const AdminDashboard = () => {
                 <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/communities')}>
                   <Building className="mr-2 h-4 w-4" />
                   Manage Communities
+                </Button>
+                <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/spam')}>
+                  <Shield className="mr-2 h-4 w-4" />
+                  Manage Spam
                 </Button>
               </CardContent>
             </Card>

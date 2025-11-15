@@ -59,28 +59,51 @@ export const createComment = asyncHandler(async (req, res) => {
         author_id: author,
         post_id: postId,
         parent_id: parentCommentId || null,
-        path: ""
+        path: "",
+        upvotes: [],
+        downvotes: []
     });
 
     console.log('About to save comment:', { body, author_id: author, post_id: postId });
-    await comment.save();
-    console.log('Comment saved successfully:', comment._id);
+    try {
+        await comment.save();
+        console.log('Comment saved successfully:', comment._id);
+    } catch (saveError) {
+        console.error('Comment save failed:', saveError.message);
+        console.error('Validation errors:', saveError.errors);
+        throw saveError;
+    }
 
     // Set path after _id is available
     comment.path = `${postId}/${comment._id}`;
-    await comment.save();
-    console.log('Comment path updated');
+    try {
+        await comment.save();
+        console.log('Comment path updated');
+    } catch (pathSaveError) {
+        console.error('Comment path update failed:', pathSaveError.message);
+        // Don't throw here, comment is already saved
+    }
 
     // Update num_comments on post
-    post.num_comments = (post.num_comments || 0) + 1;
-    await post.save();
-    console.log('Post comment count updated');
+    try {
+        post.num_comments = (Number(post.num_comments) || 0) + 1;
+        await post.save();
+        console.log('Post comment count updated');
+    } catch (postUpdateError) {
+        console.error('Post update failed:', postUpdateError.message);
+        // Don't throw, comment is saved
+    }
 
     // If replying to a comment, update replies count
     if (parentComment) {
-        parentComment.replies_count = (parentComment.replies_count || 0) + 1;
-        await parentComment.save();
-        console.log('Parent comment replies count updated');
+        try {
+            parentComment.replies_count = (parentComment.replies_count || 0) + 1;
+            await parentComment.save();
+            console.log('Parent comment replies count updated');
+        } catch (parentUpdateError) {
+            console.error('Parent comment update failed:', parentUpdateError.message);
+            // Don't throw, comment is saved
+        }
     }
 
     await logActivity(
@@ -95,8 +118,13 @@ export const createComment = asyncHandler(async (req, res) => {
 
     // Increment num_comments for user
     if (author) {
-        await User.findByIdAndUpdate(author, { $inc: { num_comments: 1 } });
-        console.log('User comment count incremented');
+        try {
+            await User.findByIdAndUpdate(author, { $inc: { num_comments: 1 } });
+            console.log('User comment count incremented');
+        } catch (userUpdateError) {
+            console.error('User update failed:', userUpdateError.message);
+            // Don't throw, comment is saved
+        }
     }
     // If spam detector attached a report object, persist it with target set to this comment
     if (req.newReport) {
@@ -137,8 +165,18 @@ export const createComment = asyncHandler(async (req, res) => {
     }
 
     console.log('createComment response about to send', { commentId: comment._id, status: 201 });
-    res.status(201).json(new ApiResponse(201, comment, "Comment created successfully"));
-    console.log('createComment response sent successfully');
+    try {
+        res.status(201).json(new ApiResponse(201, comment, "Comment created successfully"));
+        console.log('createComment response sent successfully');
+    } catch (responseError) {
+        console.error('Response serialization failed:', responseError.message);
+        // Send a simpler response
+        res.status(201).json({
+            success: true,
+            message: "Comment created successfully",
+            commentId: comment._id
+        });
+    }
 });
 
 // Get comments for a post
@@ -328,146 +366,4 @@ export const deleteComment = asyncHandler(async (req, res) => {
     }
 
     res.status(200).json(new ApiResponse(200, null, "Comment deleted successfully"));
-});
-
-// Upvote comment
-export const upvoteComment = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const userId = req.user._id;
-
-    const comment = await Comment.findById(id).populate('author_id').populate('post_id');
-    if (!comment) {
-        throw new ApiError(404, "Comment not found");
-    }
-    // Ensure arrays exist
-    comment.upvotes = Array.isArray(comment.upvotes) ? comment.upvotes : [];
-    comment.downvotes = Array.isArray(comment.downvotes) ? comment.downvotes : [];
-
-    const hasUpvoted = comment.upvotes.some(u => u.toString() === userId.toString());
-    const hasDownvoted = comment.downvotes.some(d => d.toString() === userId.toString());
-
-    if (hasUpvoted) {
-        comment.upvotes = comment.upvotes.filter(u => u.toString() !== userId.toString());
-    } else {
-        comment.upvotes.push(userId);
-        if (hasDownvoted) {
-            comment.downvotes = comment.downvotes.filter(d => d.toString() !== userId.toString());
-        }
-
-        await logActivity(
-            userId,
-            "upvote",
-            `${req.user?.username || 'unknown'} upvoted comment`,
-            req,
-            'comment',
-            id
-        );
-
-        // Create notification if not self-upvote
-        try {
-            const commentAuthorId = comment.author_id?._id ? comment.author_id._id : comment.author_id;
-            if (commentAuthorId && commentAuthorId.toString() !== userId.toString()) {
-                const notification = await Notification.create({
-                    user: commentAuthorId,
-                    type: "upvote",
-                    message: `${req.user?.username || 'Someone'} upvoted your comment`,
-                    relatedPost: comment.post_id?._id ? comment.post_id._id : comment.post_id,
-                    relatedComment: id
-                });
-                if (global.io) global.io.to(`user_${commentAuthorId}`).emit('new-notification', notification);
-            }
-        } catch (e) {
-            console.warn('Failed to create/emit upvote notification for comment:', e.message);
-        }
-    }
-
-    // Calculate score
-    comment.score = (comment.upvotes.length || 0) - (comment.downvotes.length || 0);
-
-    await comment.save();
-
-    // Emit vote update to post room safely
-    try {
-        const postId = comment.post_id?._id ? comment.post_id._id : comment.post_id;
-        if (global.io) global.io.to(`post_${postId}`).emit('comment-vote-updated', {
-            commentId: id,
-            upvotes: comment.upvotes,
-            downvotes: comment.downvotes
-        });
-    } catch (e) {
-        console.warn('Socket emit failed for comment-vote-updated (upvote):', e.message);
-    }
-
-    res.status(200).json(new ApiResponse(200, comment, "Comment upvoted successfully"));
-});
-
-// Downvote comment
-export const downvoteComment = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const userId = req.user._id;
-
-    const comment = await Comment.findById(id).populate('author_id').populate('post_id');
-    if (!comment) {
-        throw new ApiError(404, "Comment not found");
-    }
-    // Ensure arrays exist
-    comment.upvotes = Array.isArray(comment.upvotes) ? comment.upvotes : [];
-    comment.downvotes = Array.isArray(comment.downvotes) ? comment.downvotes : [];
-
-    const hasUpvoted = comment.upvotes.some(u => u.toString() === userId.toString());
-    const hasDownvoted = comment.downvotes.some(d => d.toString() === userId.toString());
-
-    if (hasDownvoted) {
-        comment.downvotes = comment.downvotes.filter(d => d.toString() !== userId.toString());
-    } else {
-        comment.downvotes.push(userId);
-        if (hasUpvoted) {
-            comment.upvotes = comment.upvotes.filter(u => u.toString() !== userId.toString());
-        }
-
-        await logActivity(
-            userId,
-            "downvote",
-            `${req.user?.username || 'unknown'} downvoted comment`,
-            req,
-            'comment',
-            id
-        );
-
-        // Create notification if not self-downvote
-        try {
-            const commentAuthorId = comment.author_id?._id ? comment.author_id._id : comment.author_id;
-            if (commentAuthorId && commentAuthorId.toString() !== userId.toString()) {
-                const notification = await Notification.create({
-                    user: commentAuthorId,
-                    type: "downvote",
-                    message: `${req.user?.username || 'Someone'} downvoted your comment`,
-                    relatedPost: comment.post_id?._id ? comment.post_id._id : comment.post_id,
-                    relatedComment: id
-                });
-                if (global.io) global.io.to(`user_${commentAuthorId}`).emit('new-notification', notification);
-            }
-        } catch (e) {
-            console.warn('Failed to create/emit downvote notification for comment:', e.message);
-        }
-    }
-
-    // Calculate score
-    comment.score = (comment.upvotes.length || 0) - (comment.downvotes.length || 0);
-
-    await comment.save();
-
-    // Emit vote update to post room safely
-    try {
-        const postId = comment.post_id?._id ? comment.post_id._id : comment.post_id;
-        if (global.io) global.io.to(`post_${postId}`).emit('comment-vote-updated', {
-            commentId: id,
-            upvotes: comment.upvotes,
-            downvotes: comment.downvotes
-        });
-    } catch (e) {
-        console.warn('Socket emit failed for comment-vote-updated (downvote):', e.message);
-    }
-
-    res.status(200).json(new ApiResponse(200, comment, "Comment downvoted successfully"));
 });

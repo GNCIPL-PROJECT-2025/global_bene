@@ -6,18 +6,16 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  ArrowUp, 
-  ArrowDown, 
-  MessageCircle, 
-  MoreHorizontal, 
-  Heart,
+import {
+  MessageCircle,
+  MoreHorizontal,
   Share,
   Flag,
   Trash2,
   Edit3
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { Link } from 'react-router-dom';
 import { fetchRepliesForComment } from '@/redux/slice/comment.slice';
 
 const EMPTY_ARRAY = [];
@@ -40,8 +38,6 @@ const selectLoadingRepliesForComment = createSelector(
 
 const CommentCard = ({
   comment,
-  onUpvote,
-  onDownvote,
   onReply,
   depth = 0,
   maxDepth = 5
@@ -51,10 +47,7 @@ const CommentCard = ({
     _id,
     body,
     author_id: author,
-    upvotes = [],
-    downvotes = [],
     replies_count = 0,
-    score = 0,
     createdAt,
     status
   } = comment;
@@ -62,7 +55,6 @@ const CommentCard = ({
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [showReplies, setShowReplies] = useState(depth < 2);
-  const [isLiked, setIsLiked] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const actionsRef = React.useRef(null);
 
@@ -72,14 +64,6 @@ const CommentCard = ({
 
   const marginLeft = Math.min(depth * 20, 80); // Progressive indentation with max limit
 
-  // Check if current user has liked this comment
-  useEffect(() => {
-    if (user && user._id) {
-      setIsLiked(upvotes.includes(user._id));
-    } else {
-      setIsLiked(false);
-    }
-  }, [user, upvotes]);
 
   useEffect(() => {
     if (showReplies && replies.length === 0 && replies_count > 0 && !loadingReplies) {
@@ -101,22 +85,6 @@ const CommentCard = ({
     }
   }, [showActions]);
 
-  const handleLike = async () => {
-    if (!user) return;
-    
-    try {
-      if (isLiked) {
-        // Unlike: call downvote to remove the upvote
-        await onDownvote(_id);
-      } else {
-        // Like: call upvote
-        await onUpvote(_id);
-      }
-      // The useEffect will update isLiked based on the new upvotes array
-    } catch (error) {
-      console.error('Failed to toggle like:', error);
-    }
-  };
 
   const handleShare = async () => {
     const postId = typeof comment.post === 'object' ? comment.post._id : comment.post;
@@ -200,9 +168,12 @@ const CommentCard = ({
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="font-semibold text-sm truncate">
+                  <Link
+                    to={`/u/${author?.username}`}
+                    className="font-semibold text-sm truncate hover:text-primary transition-colors"
+                  >
                     {author?.username}
-                  </h4>
+                  </Link>
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs bg-primary/10 text-primary font-medium">
                     @{author?.username || 'user'}
                   </span>
@@ -233,74 +204,29 @@ const CommentCard = ({
             </p>
           </div>
 
-          {/* Voting and actions bar */}
-          <div className="flex items-center justify-between">
-            {/* Vote section */}
-            <div className="flex items-center gap-1">
-              <div className="flex items-center bg-muted/50 rounded-full p-1">
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => onUpvote(_id)}
-                  className="comment-vote-button p-1 rounded-full hover:bg-green-100 dark:hover:bg-green-900/20 transition-colors group"
-                >
-                  <ArrowUp className="h-3.5 w-3.5 text-muted-foreground group-hover:text-green-600 transition-colors" />
-                </motion.button>
-                
-                <span className="px-2 py-0.5 text-xs font-medium min-w-6 text-center text-foreground">
-                  {score}
-                </span>
-                
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => onDownvote(_id)}
-                  className="comment-vote-button p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors group"
-                >
-                  <ArrowDown className="h-3.5 w-3.5 text-muted-foreground group-hover:text-red-600 transition-colors" />
-                </motion.button>
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex items-center gap-1">
-              {user && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowReplyForm(!showReplyForm)}
-                  className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
-                >
-                  <MessageCircle className="h-3 w-3" />
-                  Reply
-                </motion.button>
-              )}
-
+          {/* Action buttons */}
+          <div className="flex items-center justify-end gap-1">
+            {user && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleLike}
-                disabled={!user}
-                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all ${
-                  isLiked 
-                    ? 'text-red-500 bg-red-50 dark:bg-red-900/20' 
-                    : 'text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
-                } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <Heart className={`h-3 w-3 ${isLiked ? 'fill-current' : ''}`} />
-                {isLiked ? 'Liked' : 'Like'}
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleShare}
+                onClick={() => setShowReplyForm(!showReplyForm)}
                 className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
               >
-                <Share className="h-3 w-3" />
-                Share
+                <MessageCircle className="h-3 w-3" />
+                Reply
               </motion.button>
-            </div>
+            )}
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleShare}
+              className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+            >
+              <Share className="h-3 w-3" />
+              Share
+            </motion.button>
           </div>
 
           {/* Reply form */}
@@ -387,8 +313,6 @@ const CommentCard = ({
                           >
                             <CommentCard
                               comment={reply}
-                              onUpvote={onUpvote}
-                              onDownvote={onDownvote}
                               onReply={onReply}
                               depth={depth + 1}
                               maxDepth={maxDepth}

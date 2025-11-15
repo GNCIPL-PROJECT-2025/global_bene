@@ -1,9 +1,10 @@
 // controllers/activityLog.controller.js
+import { asyncHandler } from "../middlewares/asyncHandler.middleware.js";
 import { UserInteractionLog } from "../models/activityLog.model.js";
 import { logActivity } from "../utils/logActivity.utils.js";
 
 // ================== USER: GET MY ACTIVITY ==================
-export const getMyActivityLogs = async (req, res) => {
+export const getMyActivityLogs = asyncHandler(async (req, res) => {
     try {
         const log = await UserInteractionLog.findOne({ user_id: req.user._id })
             .populate("user_id", "username email role");
@@ -31,10 +32,10 @@ export const getMyActivityLogs = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-};
+});
 
 // ================== ADMIN: GET ALL ACTIVITY ==================
-export const getAllActivityLogs = async (req, res) => {
+export const getAllActivityLogs = asyncHandler(async (req, res) => {
     try {
         const { userId, action } = req.query;
 
@@ -79,10 +80,10 @@ export const getAllActivityLogs = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-};
+});
 
 // ================== ADMIN: CLEAR USER LOGS ==================
-export const clearUserLogs = async (req, res) => {
+export const clearUserLogs = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params; // userId
 
@@ -111,4 +112,4 @@ export const clearUserLogs = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-};
+});

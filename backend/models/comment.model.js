@@ -23,16 +23,8 @@ const commentSchema = new Schema({
     },
     path: {
         type: String,
-        required: true
+        required: false
     },
-    upvotes: [{
-        type: Schema.Types.ObjectId,
-        ref: "User"
-    }],
-    downvotes: [{
-        type: Schema.Types.ObjectId,
-        ref: "User"
-    }],
     replies_count: {
         type: Number,
         default: 0

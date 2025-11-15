@@ -76,3 +76,33 @@ export const adminDeletePost = async (postId) => {
   const { data } = await axiosInstance.delete(`/admin/post/${postId}`);
   return data;
 };
+
+// Get spam reports
+export const getSpamReports = async (params = {}) => {
+  const { data } = await axiosInstance.get('/admin/spam-reports', { params });
+  return data;
+};
+
+// Resolve spam report
+export const resolveSpamReport = async (id, action) => {
+  const { data } = await axiosInstance.put(`/admin/spam-reports/${id}/resolve`, { action });
+  return data;
+};
+
+// Get flagged posts
+export const getFlaggedPosts = async (params = {}) => {
+  const { data } = await axiosInstance.get('/admin/flagged-posts', { params });
+  return data;
+};
+
+// Approve flagged post
+export const approveFlaggedPost = async (postId) => {
+  const { data } = await axiosInstance.put(`/admin/flagged-posts/${postId}/approve`);
+  return data;
+};
+
+// Remove flagged post
+export const removeFlaggedPost = async (postId) => {
+  const { data } = await axiosInstance.delete(`/admin/flagged-posts/${postId}/remove`);
+  return data;
+};

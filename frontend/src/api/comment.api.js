@@ -68,23 +68,3 @@ export const deleteComment = async (commentId) => {
     throw error.response?.data || error;
   }
 };
-
-// Upvote comment
-export const upvoteComment = async (commentId) => {
-  try {
-    const response = await axiosInstance.post(`/comments/${commentId}/upvote`);
-    return response.data.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
-};
-
-// Downvote comment
-export const downvoteComment = async (commentId) => {
-  try {
-    const response = await axiosInstance.post(`/comments/${commentId}/downvote`);
-    return response.data.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
-};

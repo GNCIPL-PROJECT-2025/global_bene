@@ -12,6 +12,11 @@ import {
   adminAddMemberToCommunity as adminAddMemberToCommunityApi,
   adminRemoveMemberFromCommunity as adminRemoveMemberFromCommunityApi,
   adminDeletePost as adminDeletePostApi,
+  getSpamReports as getSpamReportsApi,
+  resolveSpamReport as resolveSpamReportApi,
+  getFlaggedPosts as getFlaggedPostsApi,
+  approveFlaggedPost as approveFlaggedPostApi,
+  removeFlaggedPost as removeFlaggedPostApi,
 } from '../../api/admin.api';
 
 // Async thunks
@@ -159,6 +164,66 @@ export const adminDeletePost = createAsyncThunk(
   }
 );
 
+export const getSpamReports = createAsyncThunk(
+  'admin/getSpamReports',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await getSpamReportsApi(params);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch spam reports');
+    }
+  }
+);
+
+export const resolveSpamReport = createAsyncThunk(
+  'admin/resolveSpamReport',
+  async ({ id, action }, { rejectWithValue }) => {
+    try {
+      const response = await resolveSpamReportApi(id, action);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to resolve spam report');
+    }
+  }
+);
+
+export const getFlaggedPosts = createAsyncThunk(
+  'admin/getFlaggedPosts',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await getFlaggedPostsApi(params);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch flagged posts');
+    }
+  }
+);
+
+export const approveFlaggedPost = createAsyncThunk(
+  'admin/approveFlaggedPost',
+  async (postId, { rejectWithValue }) => {
+    try {
+      const response = await approveFlaggedPostApi(postId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to approve flagged post');
+    }
+  }
+);
+
+export const removeFlaggedPost = createAsyncThunk(
+  'admin/removeFlaggedPost',
+  async (postId, { rejectWithValue }) => {
+    try {
+      const response = await removeFlaggedPostApi(postId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to remove flagged post');
+    }
+  }
+);
+
 const adminSlice = createSlice({
   name: 'admin',
   initialState: {
@@ -166,6 +231,8 @@ const adminSlice = createSlice({
     selectedUser: null,
     stats: null,
     activityLogs: [],
+    spamReports: [],
+    flaggedPosts: [],
     loading: false,
     error: null,
   },
@@ -318,6 +385,68 @@ const adminSlice = createSlice({
         // Optionally update the activity logs if needed
       })
       .addCase(clearUserLogs.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Get spam reports
+      .addCase(getSpamReports.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getSpamReports.fulfilled, (state, action) => {
+        state.loading = false;
+        state.spamReports = action.payload.reports || [];
+      })
+      .addCase(getSpamReports.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Resolve spam report
+      .addCase(resolveSpamReport.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(resolveSpamReport.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(resolveSpamReport.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Get flagged posts
+      .addCase(getFlaggedPosts.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getFlaggedPosts.fulfilled, (state, action) => {
+        state.loading = false;
+        state.flaggedPosts = action.payload.posts || [];
+      })
+      .addCase(getFlaggedPosts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Approve flagged post
+      .addCase(approveFlaggedPost.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(approveFlaggedPost.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(approveFlaggedPost.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Remove flagged post
+      .addCase(removeFlaggedPost.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(removeFlaggedPost.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(removeFlaggedPost.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

@@ -13,9 +13,7 @@ import { fetchPostById, upvotePost, downvotePost, incrementCommentsCount } from 
 import {
   fetchCommentsForPost,
   fetchRepliesForComment,
-  createComment,
-  upvoteComment,
-  downvoteComment
+  createComment
 } from '@/redux/slice/comment.slice';
 import { getAllCommunities } from '@/redux/slice/community.slice';
 import { useSocket } from '@/context/SocketContext';
@@ -104,21 +102,6 @@ const PostDetailPage = () => {
     }
   };
 
-  const handleUpvoteComment = async (commentId) => {
-    try {
-      await dispatch(upvoteComment(commentId));
-    } catch (error) {
-      console.error('Failed to upvote comment:', error);
-    }
-  };
-
-  const handleDownvoteComment = async (commentId) => {
-    try {
-      await dispatch(downvoteComment(commentId));
-    } catch (error) {
-      console.error('Failed to downvote comment:', error);
-    }
-  };
 
   const handleReply = async (parentCommentId, content) => {
     try {
@@ -204,8 +187,6 @@ const PostDetailPage = () => {
                 <CommentCard
                   key={comment._id}
                   comment={comment}
-                  onUpvote={handleUpvoteComment}
-                  onDownvote={handleDownvoteComment}
                   onReply={handleReply}
                 />
               ))

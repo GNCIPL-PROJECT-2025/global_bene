@@ -848,21 +848,24 @@ const getUserFollowers = asyncHandler(async (req, res, next) => {
     const { userId } = req.params;
     const { page = 1, limit = 10 } = req.query;
 
-    const user = await User.findById(userId).populate('followers', 'username avatar bio num_followers num_following');
+    const user = await User.findById(userId);
     if (!user) {
         return next(new ErrorHandler("User not found", 404));
     }
 
+    // Manually populate followers
+    const followers = await User.find({ _id: { $in: user.followers } }).select('username avatar bio num_followers num_following');
+
     const startIndex = (page - 1) * limit;
     const endIndex = page * limit;
-    const paginatedFollowers = user.followers.slice(startIndex, endIndex);
+    const paginatedFollowers = followers.slice(startIndex, endIndex);
 
     res.status(200).json({
         success: true,
         followers: paginatedFollowers,
         currentPage: parseInt(page),
-        totalPages: Math.ceil(user.followers.length / limit),
-        totalFollowers: user.followers.length,
+        totalPages: Math.ceil(followers.length / limit),
+        totalFollowers: followers.length,
         message: "Followers fetched successfully"
     });
 });
@@ -872,21 +875,24 @@ const getUserFollowing = asyncHandler(async (req, res, next) => {
     const { userId } = req.params;
     const { page = 1, limit = 10 } = req.query;
 
-    const user = await User.findById(userId).populate('following', 'username avatar bio num_followers num_following');
+    const user = await User.findById(userId);
     if (!user) {
         return next(new ErrorHandler("User not found", 404));
     }
 
+    // Manually populate following
+    const following = await User.find({ _id: { $in: user.following } }).select('username avatar bio num_followers num_following');
+
     const startIndex = (page - 1) * limit;
     const endIndex = page * limit;
-    const paginatedFollowing = user.following.slice(startIndex, endIndex);
+    const paginatedFollowing = following.slice(startIndex, endIndex);
 
     res.status(200).json({
         success: true,
         following: paginatedFollowing,
         currentPage: parseInt(page),
-        totalPages: Math.ceil(user.following.length / limit),
-        totalFollowing: user.following.length,
+        totalPages: Math.ceil(following.length / limit),
+        totalFollowing: following.length,
         message: "Following fetched successfully"
     });
 });

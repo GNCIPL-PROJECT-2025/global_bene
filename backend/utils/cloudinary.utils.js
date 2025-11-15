@@ -22,8 +22,9 @@ const uploadOnCloudinary = async (localFilePath, refer = "", user = null, origin
         // ✅ build custom filename
         let publicId = path.parse(originalName).name; // default: original file name (without ext)
         let folder, resource_type;
-        if (user?.fullName) {
-            const safeName = user.fullName.replace(/\s+/g, "-"); // sanitize spaces
+        const userName = user?.fullName || user?.username || "unknown";
+        if (userName && userName !== "unknown") {
+            const safeName = userName.replace(/\s+/g, "-"); // sanitize spaces
             const ext = path.extname(originalName);  // .png
             if (refer === cloudinaryAvatarRefer) {
                 publicId = `${safeName}-avatar`;
@@ -39,6 +40,22 @@ const uploadOnCloudinary = async (localFilePath, refer = "", user = null, origin
                 resource_type = "image";
             } else {
                 publicId = `${safeName}-file${ext}`;
+                folder = "GNCIPL/files";
+                resource_type = "raw";
+            }
+        } else {
+            // Fallback if no user info
+            const ext = path.extname(originalName);
+            if (refer === cloudinaryAvatarRefer) {
+                folder = "GNCIPL/avatars";
+                resource_type = "image";
+            } else if (refer === cloudinaryPostRefer) {
+                folder = "GNCIPL/posts";
+                resource_type = "image";
+            } else if (refer === cloudinaryCommunityRefer) {
+                folder = "GNCIPL/communities";
+                resource_type = "image";
+            } else {
                 folder = "GNCIPL/files";
                 resource_type = "raw";
             }

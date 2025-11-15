@@ -8,7 +8,7 @@ import { cloudinaryCommunityRefer } from "../utils/constants.utils.js";
 import { logActivity } from "../utils/logActivity.utils.js";
 
 // Create a new community
-export const createCommunity = asyncHandler(async (req, res) => {
+const createCommunity = asyncHandler(async (req, res) => {
     const { title, description, name } = req.body;
     const creator = req.user._id;
 
@@ -90,7 +90,7 @@ const community = await Community.create({
 });
 
 // Get all communities
-export const getAllCommunities = asyncHandler(async (req, res) => {
+const getAllCommunities = asyncHandler(async (req, res) => {
     const communities = await Community.find({})
         .populate('members', 'username avatar')
         .select('name title description avatar banner members_count createdAt')
@@ -100,7 +100,7 @@ export const getAllCommunities = asyncHandler(async (req, res) => {
 });
 
 // Get community by ID or name
-export const getCommunityById = asyncHandler(async (req, res) => {
+const getCommunityById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     let community;
@@ -125,7 +125,7 @@ export const getCommunityById = asyncHandler(async (req, res) => {
 });
 
 // Join community
-export const joinCommunity = asyncHandler(async (req, res) => {
+const joinCommunity = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
@@ -161,7 +161,7 @@ export const joinCommunity = asyncHandler(async (req, res) => {
 });
 
 // Leave community
-export const leaveCommunity = asyncHandler(async (req, res) => {
+const leaveCommunity = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
@@ -197,7 +197,7 @@ export const leaveCommunity = asyncHandler(async (req, res) => {
 });
 
 // Update community (only moderators)
-export const updateCommunity = asyncHandler(async (req, res) => {
+const updateCommunity = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { description, rules, is_private } = req.body;
     const userId = req.user._id;
@@ -230,7 +230,7 @@ export const updateCommunity = asyncHandler(async (req, res) => {
 });
 
 // Add moderator (only creator)
-export const addModerator = asyncHandler(async (req, res) => {
+const addModerator = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { userId } = req.body;
     const currentUserId = req.user._id;
@@ -270,7 +270,7 @@ export const addModerator = asyncHandler(async (req, res) => {
 });
 
 // Remove moderator (only creator)
-export const removeModerator = asyncHandler(async (req, res) => {
+const removeModerator = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { userId } = req.body;
     const currentUserId = req.user._id;
@@ -309,8 +309,66 @@ export const removeModerator = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, community, "Moderator removed successfully"));
 });
 
+// Remove member from community (moderators and above)
+const removeMember = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { userId } = req.body;
+    const currentUserId = req.user._id;
+
+    const community = await Community.findById(id);
+    if (!community) {
+        throw new ApiError(404, "Community not found");
+    }
+
+    // Check if current user is moderator or creator
+    const isCreator = community.creator_id._id.toString() === currentUserId.toString();
+    const isModerator = community.moderators.some(mod => mod.toString() === currentUserId.toString());
+
+    if (!isCreator && !isModerator) {
+        throw new ApiError(403, "Only moderators or creator can remove members");
+    }
+
+    if (!community.members.includes(userId)) {
+        throw new ApiError(400, "User is not a member of this community");
+    }
+
+    if (userId.toString() === currentUserId.toString()) {
+        throw new ApiError(400, "Cannot remove yourself from community");
+    }
+
+    // Cannot remove creator
+    if (userId.toString() === community.creator_id._id.toString()) {
+        throw new ApiError(400, "Cannot remove community creator");
+    }
+
+    community.members = community.members.filter(member => member.toString() !== userId.toString());
+    community.members_count = community.members.length;
+
+    // Also remove from moderators if they were one
+    community.moderators = community.moderators.filter(mod => mod.toString() !== userId.toString());
+
+    await community.save();
+
+    // Remove from user's communities_followed
+    await User.findByIdAndUpdate(userId, { $pull: { communities_followed: id } });
+
+    await community.populate('members', 'username avatar');
+    await community.populate('moderators', 'username avatar');
+
+    await logActivity(
+        currentUserId,
+        "remove-member",
+        `${req.user.username} removed member from community: ${community.title}`,
+        req,
+        'community',
+        id
+    );
+
+    res.status(200).json(new ApiResponse(200, community, "Member removed successfully"));
+});
+
 // Delete community (only creator)
-export const deleteCommunity = asyncHandler(async (req, res) => {
+const deleteCommunity = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
@@ -339,3 +397,16 @@ export const deleteCommunity = asyncHandler(async (req, res) => {
 
     res.status(200).json(new ApiResponse(200, null, "Community deleted successfully"));
 });
+
+export {
+    createCommunity,
+    getAllCommunities,
+    getCommunityById,
+    joinCommunity,
+    leaveCommunity,
+    updateCommunity,
+    addModerator,
+    removeModerator,
+    removeMember,
+    deleteCommunity
+}

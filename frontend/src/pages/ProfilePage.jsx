@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import MainLayout from '@/Layouts/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Loader } from '@/components/common/Loader';
 import ProfileSettings from '@/components/ProfileSettings';
 import PostCard from '@/components/cards/PostCards';
@@ -16,7 +19,7 @@ import CommentCard from '@/components/cards/CommentCard';
 import { fetchUserProfile, updateProfile, updateAvatar, followUser, unfollowUser, fetchUserFollowers, fetchUserFollowing } from '@/redux/slice/user.slice';
 import { getUserPosts } from '@/api/post.api';
 import { getUserComments } from '@/api/comment.api';
-import { getUserProfileByUsername, sendEmailVerification } from '@/api/user.api';
+import { getUserProfileByUsername, sendEmailVerification, verifyEmail } from '@/api/user.api';
 import { getAllCommunities } from '@/redux/slice/community.slice';
 import {
   User,
@@ -52,17 +55,16 @@ const ProfilePage = () => {
   const [followLoading, setFollowLoading] = useState(false);
   const [profileUser, setProfileUser] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
-  const [followers, setFollowers] = useState([]);
-  const [following, setFollowing] = useState([]);
-  const [followersLoading, setFollowersLoading] = useState(false);
-  const [followingLoading, setFollowingLoading] = useState(false);
   const [verificationLoading, setVerificationLoading] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpError, setOtpError] = useState('');
   const navigate = useNavigate();
   const { username } = useParams();
   const dispatch = useDispatch();
 
   const { user: currentUser, isAuthenticated } = useSelector((state) => state.auth);
-  const { loading, error } = useSelector((state) => state.user);
+  const { loading, error, followers, following } = useSelector((state) => state.user);
   const { communities } = useSelector((state) => state.community);
 
   const isOwnProfile = !username || username === currentUser?.username;
@@ -112,11 +114,11 @@ const ProfilePage = () => {
     } else if (activeTab === 'comments' && profileUser && userComments.length === 0) {
       fetchUserComments();
     } else if (activeTab === 'followers' && profileUser && followers.length === 0) {
-      fetchUserFollowers();
+      fetchFollowersData();
     } else if (activeTab === 'following' && profileUser && following.length === 0) {
-      fetchUserFollowing();
+      fetchFollowingData();
     }
-  }, [activeTab, profileUser]);
+  }, [activeTab, profileUser, followers, following]);
 
   // Check if current user is following this profile user
   useEffect(() => {
@@ -210,31 +212,23 @@ const ProfilePage = () => {
     }
   };
 
-  const fetchUserFollowers = async () => {
+  const fetchFollowersData = async () => {
     if (!profileUser?._id) return;
 
     try {
-      setFollowersLoading(true);
-      const response = await dispatch(fetchUserFollowers({ userId: profileUser._id })).unwrap();
-      setFollowers(response.followers || []);
+      await dispatch(fetchUserFollowers({ userId: profileUser._id })).unwrap();
     } catch (error) {
       console.error('Failed to fetch user followers:', error);
-    } finally {
-      setFollowersLoading(false);
     }
   };
 
-  const fetchUserFollowing = async () => {
+  const fetchFollowingData = async () => {
     if (!profileUser?._id) return;
 
     try {
-      setFollowingLoading(true);
-      const response = await dispatch(fetchUserFollowing({ userId: profileUser._id })).unwrap();
-      setFollowing(response.following || []);
+      await dispatch(fetchUserFollowing({ userId: profileUser._id })).unwrap();
     } catch (error) {
       console.error('Failed to fetch user following:', error);
-    } finally {
-      setFollowingLoading(false);
     }
   };
 
@@ -276,11 +270,33 @@ const ProfilePage = () => {
     setVerificationLoading(true);
     try {
       await sendEmailVerification();
-      // Show success message (you can add toast notification here)
-      alert('Verification email sent successfully!');
+      setShowVerificationModal(true);
+      setOtp('');
+      setOtpError('');
     } catch (error) {
       console.error('Failed to send verification email:', error);
       alert('Failed to send verification email. Please try again.');
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    if (!otp.trim()) {
+      setOtpError('Please enter the verification code');
+      return;
+    }
+
+    setVerificationLoading(true);
+    try {
+      await verifyEmail(otp);
+      setShowVerificationModal(false);
+      // Refresh profile to show verified status
+      await dispatch(fetchUserProfile());
+      alert('Email verified successfully!');
+    } catch (error) {
+      console.error('Failed to verify email:', error);
+      setOtpError(error.response?.data?.message || 'Invalid verification code. Please try again.');
     } finally {
       setVerificationLoading(false);
     }
@@ -359,12 +375,10 @@ const ProfilePage = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {profileUser.isVerified && (
-                      <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                        <Shield className="w-3 h-3 mr-1" />
-                        Verified
-                      </Badge>
-                    )}
+                    <Badge variant="secondary" className={profileUser.isVerified ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"}>
+                      <Shield className="w-3 h-3 mr-1" />
+                      {profileUser.isVerified ? "Verified" : "Unverified"}
+                    </Badge>
                     <Badge variant="outline" className="capitalize">
                       {profileUser.role}
                     </Badge>
@@ -423,6 +437,14 @@ const ProfilePage = () => {
                   <div className="text-center">
                     <div className="text-xl font-bold text-foreground">{profileUser.stats?.communities || 0}</div>
                     <div className="text-sm text-muted-foreground">Communities</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-green-600">{profileUser.stats?.upvotes || 0}</div>
+                    <div className="text-sm text-muted-foreground">Upvotes</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-red-600">{profileUser.stats?.downvotes || 0}</div>
+                    <div className="text-sm text-muted-foreground">Downvotes</div>
                   </div>
                 </div>
               </div>
@@ -642,7 +664,7 @@ const ProfilePage = () => {
           </TabsContent>
 
           <TabsContent value="followers" className="space-y-4">
-            {followersLoading ? (
+            {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader size="lg" />
               </div>
@@ -700,7 +722,7 @@ const ProfilePage = () => {
           </TabsContent>
 
           <TabsContent value="following" className="space-y-4">
-            {followingLoading ? (
+            {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader size="lg" />
               </div>
@@ -769,6 +791,62 @@ const ProfilePage = () => {
         </Tabs>
         </div>
       </div>
+
+      {/* Email Verification Modal */}
+      <Dialog open={showVerificationModal} onOpenChange={setShowVerificationModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Verify Your Email</DialogTitle>
+            <DialogDescription>
+              We've sent a verification code to {profileUser?.email}. Please enter the code below to verify your email address.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="otp" className="text-right">
+                Code
+              </Label>
+              <Input
+                id="otp"
+                type="text"
+                placeholder="Enter 6-digit code"
+                value={otp}
+                onChange={(e) => {
+                  setOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
+                  setOtpError('');
+                }}
+                className="col-span-3"
+                maxLength={6}
+              />
+            </div>
+            {otpError && (
+              <div className="text-sm text-red-600 dark:text-red-400 text-center">
+                {otpError}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowVerificationModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleVerifyEmail}
+              disabled={verificationLoading || otp.length !== 6}
+            >
+              {verificationLoading ? (
+                <Loader size="sm" />
+              ) : (
+                'Verify Email'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 };
