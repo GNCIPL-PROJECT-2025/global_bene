@@ -35,15 +35,128 @@ export const getAllReports = asyncHandler(async (req, res) => {
         return res.status(403).json(new ApiResponse(403, null, "Access denied"));
     }
 
-    // const reports = await Report.find()
-    //     .populate("target_id")
+    const postReports = await Report.find({ target_type: 'Post' })
+        .populate("reporter_id", "username avatar")
+        .populate({
+            path: "target_id",
+            populate: [{
+                path: "author_id",
+                select: "username avatar",
+            }
+                , {
+                path: "community_id",
+                select: "moderators"
+            }]
+
+        })
+        .lean();
+
+
+    // For Comments  
+    const commentReports = await Report.find({ target_type: 'Comment' })
+        .populate("reporter_id", "username avatar")
+        .populate({
+            path: "target_id",
+            populate: [
+                {
+                    path: "author_id",
+                    select: "username avatar"
+                },
+                {
+                    path: "post_id",
+                    select: "community_id",
+                    populate: {
+                        path: "community_id",
+                        select: " moderators"
+                    }
+                }
+            ]
+        })
+        .lean();
+
+    // for user reports
+    // const userReports = await Report.find({ target_type: 'User' })
     //     .populate("reporter_id", "username avatar")
-    //     .populate("community_id", "name");
-    let reports = await Report.find().populate("reporter_id", "username avatar ").populate("target_id").lean();
-        res.json(new ApiResponse(200, reports, "All reports fetched"));
+    //     .populate({
+    //         "path": "communities_followed",
+    //         "select": "moderators"
+    //     })
+    //     .lean();
+
+    const userReports = await Report.find({ target_type: 'User' })
+        .populate({
+            path: "reporter_id",
+            select: "username avatar communities_followed",
+            populate: {
+                path: "communities_followed",
+                select: "moderators"
+            }
+        })
+        .populate("target_id", "username avatar")
+        .lean();
+
+    // Combine all reports
+
+    const allReports = {
+        userReports: userReports,
+        postReports: postReports,
+        commentReports: commentReports
+    };
+    
+    if (req.user.role === 'admin') {
+        return res.json(new ApiResponse(200, allReports, "All reports fetched"));
+
+    }
+
+    const filteredPostReports = postReports.filter(report => {
+        if (report.target_id &&
+            report.target_id.community_id &&
+            report.target_id.community_id.moderators) {
+
+            // Check if moderatorId exists in the moderators array
+            const hasAccess = report.target_id.community_id.moderators.some(modId =>
+                modId.toString() === req.user._id.toString()
+            );
+            return hasAccess;
+        }
+        return false;
+    });
+    const filteredCommentReports = commentReports.filter(report => {
+        if (report.target_id &&
+            report.target_id.post_id &&
+            report.target_id.post_id.community_id &&
+            report.target_id.post_id.community_id.moderators) {
+
+            // Check if moderatorId exists in the moderators array
+            const hasAccess = report.target_id.post_id.community_id.moderators.some(modId =>
+                modId.toString() === req.user._id.toString()
+            );
+            return hasAccess;
+        }
+        return false;
     });
 
+    const filteredUserReports = userReports.filter(report => {
+        if (report.reporter_id && report.reporter_id.communities_followed) {
+            // Check if moderatorId exists in ANY of the reporter's communities moderators arrays
+            return report.reporter_id.communities_followed.some(community =>
+                community.moderators &&
+                community.moderators.some(modId =>
+                    modId.toString() === req.user._id.toString()
+                )
+            );
+        }
+        return false;
+    });
 
+    const filteredAllReports = {
+        userReports: filteredUserReports,
+        postReports: filteredPostReports,
+        commentReports: filteredCommentReports
+    };
+
+    return res.json(new ApiResponse(200, filteredUserReports, "All reports fetched"));
+});
 
 // export const getAllReports = async (req, res) => {
 //     try {
@@ -53,7 +166,7 @@ export const getAllReports = asyncHandler(async (req, res) => {
 //         // ✅ THIS LINE IS REQUIRED
 //         const reports = await Report.find();
 
-       
+
 //         for (let r of reports) {
 
 //             // populate reporter
