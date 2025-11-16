@@ -7,7 +7,13 @@ dotenv.config();
 export const spamDetector = asyncHandler(async (req, res, next) => {
     try {
         const text = req.body.body;
+        const type = req.body.type; // post, comment, message
+
         // console.log("Body", req.body);
+        if (type && type != "text") {
+
+            return next();
+        }
         if (!text || typeof text !== "string" || text.trim() === "") {
             return res.status(400).json({ error: "Invalid text input" });
         }
@@ -15,7 +21,6 @@ export const spamDetector = asyncHandler(async (req, res, next) => {
         console.log("\n-------------\nSPAM DETECTOR MIDDLEWARE")
         // Call the external spam detection API
         const { data } = await axios.post(`${process.env.SPAM_SERVICE_API_KEY}/predict`, { text });
-        console.log(data);
 
         const spamProbability = data.toxicity_detection.all_scores.spam
         const toxicityProbability = data.toxicity_detection.all_scores.toxic;
