@@ -14,7 +14,7 @@ const userSchema = new Schema({
     },
     phone: {
         type: Number,
-        required: function() {
+        required: function () {
             return !this.googleId; // Phone required only if not Google auth
         },
         unique: true,
@@ -63,7 +63,7 @@ const userSchema = new Schema({
     },
     password: {
         type: String,
-        required: function() {
+        required: function () {
             return !this.googleId; // Password required only if not Google auth
         },
         minlength: [8, "Password must be at least 8 chatacter long"],
@@ -157,6 +157,10 @@ const userSchema = new Schema({
         type: Number,
         default: 0
     },
+    isBanned: {
+        type: Boolean,
+        default: false
+    }
 
 },
     {
