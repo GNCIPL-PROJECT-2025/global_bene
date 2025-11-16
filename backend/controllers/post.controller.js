@@ -56,7 +56,7 @@ export const createPost = asyncHandler(async (req, res) => {
         type: type || "text",
         media,
         url: url || "",
-        tags: tags || [],
+        tags: req.autoTags?req.autoTags:tags || [],
         status: req.newReport ? 'flagged' : 'active',
         label: req.newReport ? req.newReport.label : 'safe'
     });
