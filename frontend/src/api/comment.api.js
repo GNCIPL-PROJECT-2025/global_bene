@@ -80,3 +80,13 @@ export const downvoteComment = async (commentId) => {
     throw error.response?.data || error;
   }
 };
+
+// Report a comment
+export const reportComment = async (commentId, reason, description) => {
+  try {
+    const response = await axiosInstance.post(`/comments/${commentId}/report`, { reason, description });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

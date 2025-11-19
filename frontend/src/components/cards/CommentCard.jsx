@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
 import { createSelector } from '@reduxjs/toolkit';
+import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { 
@@ -16,10 +18,13 @@ import {
   Flag,
   Trash2,
   Edit3,
-  AlertTriangle
+  AlertTriangle,
+  EyeOff
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fetchRepliesForComment } from '@/redux/slice/comment.slice';
+import ReportModal from '@/components/common/ReportModal';
+import { reportComment } from '@/api/comment.api';
 
 const EMPTY_ARRAY = [];
 
@@ -59,7 +64,9 @@ const CommentCard = ({
     createdAt,
     status,
     spamScore = 0,
-    toxicityScore = 0
+    toxicityScore = 0,
+    isSensitive = false,
+    tags = []
   } = comment;
 
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -68,6 +75,9 @@ const CommentCard = ({
   const [isLiked, setIsLiked] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const actionsRef = React.useRef(null);
+  const [isRevealed, setIsRevealed] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
 
   // Check if comment should show warning
   const shouldShowWarning = status === 'flagged' || status === 'removed' || spamScore > 0.5 || toxicityScore > 0.5;
@@ -168,6 +178,24 @@ const CommentCard = ({
     }
   };
 
+  const handleReportSubmit = async (reportData) => {
+    if (!user) {
+      alert('Please login to report content');
+      return;
+    }
+
+    setIsReporting(true);
+    try {
+      await reportComment(_id, reportData.reason, reportData.description);
+      alert('Report submitted successfully. Thank you for helping keep our community safe.');
+    } catch (error) {
+      alert('Failed to submit report. Please try again.');
+      console.error('Report error:', error);
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
   const getDepthStyling = () => {
     if (depth === 0) return "bg-card border border-border/50";
     if (depth === 1) return "bg-muted/30 border-l-4 border-l-primary/40";
@@ -206,9 +234,9 @@ const CommentCard = ({
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="font-semibold text-sm truncate">
+                  <Link to={`/user/${author?._id}`} className="font-semibold text-sm truncate hover:text-primary transition-colors">
                     {author?.username}
-                  </h4>
+                  </Link>
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs bg-primary/10 text-primary font-medium">
                     @{author?.username || 'user'}
                   </span>
@@ -247,11 +275,56 @@ const CommentCard = ({
             </div>
           )}
 
+          {/* Sensitive Content Warning */}
+          {isSensitive && (
+            <div className="mt-2 p-2 border rounded-md bg-red-50 border-red-200">
+              <div className="flex items-center gap-2 text-red-800">
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+                <span className="text-xs font-medium">
+                  This comment has been flagged for review due to potential spam or inappropriate content.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Comment content */}
-          <div className="mb-2">
+          <div className={`mb-2 relative ${isSensitive && !isRevealed ? 'blur-lg select-none' : ''}`}>
             <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
               {body}
             </p>
+
+            {/* Tags */}
+            {tags && tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {tags.map((tag, index) => (
+                  <Badge 
+                    key={`${tag}-${index}`}
+                    variant="secondary" 
+                    className="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200"
+                  >
+                    #{tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {isSensitive && !isRevealed && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/10 rounded gap-1">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setIsRevealed(true)}
+                  className="p-2 bg-white/90 rounded-full shadow-md hover:bg-white transition-colors"
+                  title="View sensitive content at your own risk and potential harm"
+                >
+                  <EyeOff className="h-4 w-4 text-gray-700" />
+                </motion.button>
+                <div className="flex items-center gap-1 bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                  <AlertTriangle className="h-2.5 w-2.5" />
+                  Sensitive
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Voting and actions bar */}
@@ -320,6 +393,16 @@ const CommentCard = ({
               >
                 <Share className="h-3 w-3" />
                 Share
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsReportModalOpen(true)}
+                className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-all"
+              >
+                <Flag className="h-3 w-3" />
+                Report
               </motion.button>
             </div>
           </div>
@@ -449,6 +532,16 @@ const CommentCard = ({
           </button>
         </motion.div>
       )}
+
+      {/* Report Modal */}
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        targetType="comment"
+        targetId={_id}
+        onSubmit={handleReportSubmit}
+        isLoading={isReporting}
+      />
     </motion.div>
   );
 };

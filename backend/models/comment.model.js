@@ -46,13 +46,13 @@ const commentSchema = new Schema({
         type: Number,
         default: 0
     },
-    spamScore: {
-        type: Number,
-        default: 0
+    label:{
+        type: String,
+        default: 'safe'
     },
-    toxicityScore: {
-        type: Number,
-        default: 0
+    isSensitive: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true

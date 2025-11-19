@@ -7,26 +7,27 @@ import PostCard from '@/components/cards/PostCards';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader } from '@/components/common/Loader';
-import { Flame, Clock, TrendingUp, Star } from 'lucide-react';
+import { Flame, Clock, TrendingUp, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchPosts, upvotePost, downvotePost } from '@/redux/slice/post.slice';
 import { getAllCommunities } from '@/redux/slice/community.slice';
 
 const LandingPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { posts, loading: postsLoading, error: postsError } = useSelector(state => state.post);
+  const { posts, loading: postsLoading, error: postsError, pagination } = useSelector(state => state.post);
   const { communities, loading: communitiesLoading } = useSelector(state => state.community);
   const [sortBy, setSortBy] = useState('hot');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     // Fetch real posts from API
     const params = { 
       sortBy: sortBy === 'hot' ? 'createdAt' : sortBy,
-      page: 1,
+      page: currentPage,
       limit: 10
     };
     dispatch(fetchPosts(params));
-  }, [dispatch, sortBy]);
+  }, [dispatch, sortBy, currentPage]);
 
   useEffect(() => {
     // Fetch communities
@@ -56,6 +57,15 @@ const LandingPage = () => {
   const handleJoinCommunity = (communityName, isJoining) => {
     // Handle join/leave community logic
     console.log(`${isJoining ? 'Joining' : 'Leaving'} community:`, communityName);
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const handleSortChange = (newSortBy) => {
+    setSortBy(newSortBy);
+    setCurrentPage(1); // Reset to first page when sorting changes
   };
 
   if (postsLoading || communitiesLoading) {
@@ -95,7 +105,7 @@ const LandingPage = () => {
             <p>Failed to load posts: {postsError}</p>
             <Button 
               variant="outline" 
-              onClick={() => dispatch(fetchPosts({ sortBy, page: 1, limit: 10 }))}
+              onClick={() => dispatch(fetchPosts({ sortBy, page: currentPage, limit: 10 }))}
               className="mt-2"
             >
               Retry
@@ -104,7 +114,7 @@ const LandingPage = () => {
         )}
 
         {/* Sort Tabs */}
-        <Tabs value={sortBy} onValueChange={setSortBy} className="w-full">
+        <Tabs value={sortBy} onValueChange={handleSortChange} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="hot" className="flex items-center gap-2">
               <Flame className="h-4 w-4" />
@@ -126,7 +136,7 @@ const LandingPage = () => {
 
           <TabsContent value={sortBy} className="mt-6">
             <div className="space-y-4">
-              {posts && posts.length > 0 ? posts.map((post, index) => (
+              {posts && posts.length > 0 ? posts.filter(post => post && post._id).map((post, index) => (
                 <motion.div
                   key={post._id}
                   initial={{ opacity: 0, y: 20 }}
@@ -150,6 +160,38 @@ const LandingPage = () => {
                 </div>
               )}
             </div>
+
+            {/* Pagination */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between mt-8">
+                <Button
+                  variant="outline"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  className="flex items-center gap-2"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    Page {pagination.currentPage} of {pagination.totalPages}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    ({pagination.totalPosts} posts)
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= pagination.totalPages}
+                  className="flex items-center gap-2"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

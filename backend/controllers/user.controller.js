@@ -776,6 +776,199 @@ const googleAuthCallback = asyncHandler(async (req, res, next) => {
     }
 });
 
+// *Follow User
+const followUser = asyncHandler(async (req, res, next) => {
+    const { userId } = req.params;
+    const currentUserId = req.user._id;
+
+    if (userId === currentUserId.toString()) {
+        return next(new ErrorHandler("You cannot follow yourself", 400));
+    }
+
+    const userToFollow = await User.findById(userId);
+    const currentUser = await User.findById(currentUserId);
+
+    if (!userToFollow) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    // Check if already following
+    if (currentUser.following.includes(userId)) {
+        return next(new ErrorHandler("You are already following this user", 400));
+    }
+
+    // Add to following and followers
+    await User.findByIdAndUpdate(currentUserId, {
+        $push: { following: userId },
+        $inc: { num_following: 1 }
+    });
+
+    await User.findByIdAndUpdate(userId, {
+        $push: { followers: currentUserId },
+        $inc: { num_followers: 1 }
+    });
+
+    await logActivity(
+        currentUserId,
+        "follow",
+        `${currentUser.username} followed ${userToFollow.username}`,
+        req,
+        'user',
+        userId
+    );
+
+    res.status(200).json({
+        success: true,
+        message: `You are now following ${userToFollow.username}`
+    });
+});
+
+// *Unfollow User
+const unfollowUser = asyncHandler(async (req, res, next) => {
+    const { userId } = req.params;
+    const currentUserId = req.user._id;
+
+    if (userId === currentUserId.toString()) {
+        return next(new ErrorHandler("You cannot unfollow yourself", 400));
+    }
+
+    const userToUnfollow = await User.findById(userId);
+    const currentUser = await User.findById(currentUserId);
+
+    if (!userToUnfollow) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    // Check if following
+    if (!currentUser.following.includes(userId)) {
+        return next(new ErrorHandler("You are not following this user", 400));
+    }
+
+    // Remove from following and followers
+    await User.findByIdAndUpdate(currentUserId, {
+        $pull: { following: userId },
+        $inc: { num_following: -1 }
+    });
+
+    await User.findByIdAndUpdate(userId, {
+        $pull: { followers: currentUserId },
+        $inc: { num_followers: -1 }
+    });
+
+    await logActivity(
+        currentUserId,
+        "unfollow",
+        `${currentUser.username} unfollowed ${userToUnfollow.username}`,
+        req,
+        'user',
+        userId
+    );
+
+    res.status(200).json({
+        success: true,
+        message: `You have unfollowed ${userToUnfollow.username}`
+    });
+});
+
+// *Get Followers
+const getUserFollowers = asyncHandler(async (req, res, next) => {
+    const { userId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const user = await User.findById(userId).populate({
+        path: 'followers',
+        select: 'username avatar _id',
+        options: { skip, limit }
+    });
+
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    res.status(200).json({
+        success: true,
+        followers: user.followers,
+        totalFollowers: user.num_followers,
+        currentPage: page,
+        totalPages: Math.ceil(user.num_followers / limit)
+    });
+});
+
+// *Get Following
+const getUserFollowing = asyncHandler(async (req, res, next) => {
+    const { userId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const user = await User.findById(userId).populate({
+        path: 'following',
+        select: 'username avatar _id',
+        options: { skip, limit }
+    });
+
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    res.status(200).json({
+        success: true,
+        following: user.following,
+        totalFollowing: user.num_following,
+        currentPage: page,
+        totalPages: Math.ceil(user.num_following / limit)
+    });
+});
+
+// *Check Follow Status
+const checkFollowStatus = asyncHandler(async (req, res, next) => {
+    const { userId } = req.params;
+    const currentUserId = req.user._id;
+
+    const currentUser = await User.findById(currentUserId);
+
+    const isFollowing = currentUser.following.includes(userId);
+
+    res.status(200).json({
+        success: true,
+        isFollowing
+    });
+});
+
+// *Get User by ID
+const getUserById = asyncHandler(async (req, res, next) => {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId).select("-password -refreshToken -verificationCode -verificationCodeExpire -forgotPasswordToken -forgotPasswordTokenExpiry");
+
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    // Get user stats
+    const [postsCount, commentsCount, communitiesCount] = await Promise.all([
+        mongoose.model('Post').countDocuments({ author_id: userId }),
+        mongoose.model('Comment').countDocuments({ author_id: userId }),
+        mongoose.model('Community').countDocuments({ members: userId })
+    ]);
+
+    const userWithStats = {
+        ...user.toObject(),
+        stats: {
+            posts: postsCount,
+            comments: commentsCount,
+            communities: communitiesCount
+        }
+    };
+
+    res.status(200).json({
+        success: true,
+        user: userWithStats
+    });
+});
+
 // *Exports
 export {
     refreshAccessToken,
@@ -791,5 +984,11 @@ export {
     updateUserProfile,
     updateUserAvatar,
     deleteUser,
-    googleAuthCallback
+    googleAuthCallback,
+    followUser,
+    unfollowUser,
+    getUserFollowers,
+    getUserFollowing,
+    checkFollowStatus,
+    getUserById
 }

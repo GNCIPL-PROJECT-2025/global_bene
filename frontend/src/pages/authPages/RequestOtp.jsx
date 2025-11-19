@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader } from '@/components/common/Loader';
 import { Mail, Phone, ArrowLeft } from 'lucide-react';
-import { sendOtp } from '@/api/auth.api';
+import { sendOtp } from '../../redux/slice/auth.slice';
 
 const RequestOtp = () => {
   const [method, setMethod] = useState('email'); // 'email' or 'phone'
@@ -14,6 +15,16 @@ const RequestOtp = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { isAuthenticated, user } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // If authenticated, automatically send OTP and navigate
+      dispatch(sendOtp());
+      navigate('/verify-otp', { state: { method: 'email', contact: user.email, purpose: 'verification' } });
+    }
+  }, [isAuthenticated, user, dispatch, navigate]);
 
   const handleMethodChange = (newMethod) => {
     setMethod(newMethod);

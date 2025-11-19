@@ -34,7 +34,11 @@ export const getCommunityByName = async (communityName) => {
 // Create community
 export const createCommunity = async (communityData) => {
   try {
-    const response = await axiosInstance.post('/communities', communityData);
+    const response = await axiosInstance.post('/communities', communityData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data.data;
   } catch (error) {
     throw error.response?.data || error;

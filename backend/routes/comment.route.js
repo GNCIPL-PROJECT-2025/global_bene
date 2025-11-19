@@ -9,7 +9,8 @@ import {
     deleteComment,
     upvoteComment,
     downvoteComment,
-    getCommentsByUser
+    getCommentsByUser,
+    reportComment
 } from "../controllers/comment.controller.js";
 import { spamDetector } from "../middlewares/spamDetector.middleware.js";
 
@@ -24,5 +25,6 @@ router.route("/:id").put(verifyJWT, spamDetector, updateComment);
 router.route("/:id").delete(verifyJWT, deleteComment);
 router.route("/:id/upvote").post(verifyJWT, upvoteComment);
 router.route("/:id/downvote").post(verifyJWT, downvoteComment);
+router.route("/:id/report").post(verifyJWT, reportComment);
 
 export default router;

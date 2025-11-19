@@ -4,22 +4,30 @@ const voteSchema = new Schema({
     user_id: {
         type: Schema.Types.ObjectId,
         ref: "User",
-        required: true
-    },
-    target_type: {
-        type: String,
-        enum: ['Comment', 'Post'],
-        required: true
-    },
-    target_id: {
-        type: Schema.Types.ObjectId,
         required: true,
-        refPath: 'target_type'
+        unique: true
     },
-    value: {
-        type: Number,
-        enum: [-1, 1], // -1 for downvote, 1 for upvote
-        required: true
+    votes: {
+        post: {
+            target_ids: [{
+                type: Schema.Types.ObjectId,
+                ref: "Post"
+            }],
+            value: {
+                type: Number,
+                default: 0
+            }
+        },
+        comment: {
+            target_ids: [{
+                type: Schema.Types.ObjectId,
+                ref: "Comment"
+            }],
+            value: {
+                type: Number,
+                default: 0
+            }
+        }
     }
 }, {
     timestamps: true

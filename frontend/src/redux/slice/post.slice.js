@@ -193,6 +193,14 @@ const postSlice = createSlice({
     clearCurrentPost: (state) => {
       state.currentPost = null;
     },
+    clearCommunityPosts: (state) => {
+      state.communityPosts = [];
+      state.communityPagination = {
+        currentPage: 1,
+        totalPages: 1,
+        totalPosts: 0
+      };
+    },
     setCurrentPost: (state, action) => {
       state.currentPost = action.payload;
     },
@@ -424,5 +432,5 @@ const postSlice = createSlice({
   },
 });
 
-export const { clearPostError, clearCurrentPost, setCurrentPost, updatePostInList, updatePostVotes, incrementCommentsCount, decrementCommentsCount } = postSlice.actions;
+export const { clearPostError, clearCurrentPost, clearCommunityPosts, setCurrentPost, updatePostInList, updatePostVotes, incrementCommentsCount, decrementCommentsCount } = postSlice.actions;
 export default postSlice.reducer;

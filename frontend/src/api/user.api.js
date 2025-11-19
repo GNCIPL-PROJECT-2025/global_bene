@@ -11,6 +11,16 @@ export const getCurrentUser = async () => {
   }
 };
 
+// Get user by ID
+export const getUserById = async (userId) => {
+  try {
+    const response = await axiosInstance.get(`/users/${userId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
 // Update user profile
 export const updateUserProfile = async (userData) => {
   try {
@@ -82,6 +92,66 @@ export const getUserComments = async (userId, page = 1, limit = 10) => {
 export const getUserStats = async (userId) => {
   try {
     const response = await axiosInstance.get(`/users/${userId}/stats`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Follow a user
+export const followUser = async (userId) => {
+  try {
+    const response = await axiosInstance.post(`/users/${userId}/follow`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Unfollow a user
+export const unfollowUser = async (userId) => {
+  try {
+    const response = await axiosInstance.post(`/users/${userId}/unfollow`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Get user followers
+export const getUserFollowers = async (userId, page = 1, limit = 10) => {
+  try {
+    const response = await axiosInstance.get(`/users/${userId}/followers?page=${page}&limit=${limit}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Get user following
+export const getUserFollowing = async (userId, page = 1, limit = 10) => {
+  try {
+    const response = await axiosInstance.get(`/users/${userId}/following?page=${page}&limit=${limit}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Check follow status
+export const checkFollowStatus = async (userId) => {
+  try {
+    const response = await axiosInstance.get(`/users/${userId}/follow-status`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Report a user
+export const reportUser = async (userId, reason, description) => {
+  try {
+    const response = await axiosInstance.post(`/users/${userId}/report`, { reason, description });
     return response.data;
   } catch (error) {
     throw error.response?.data || error;

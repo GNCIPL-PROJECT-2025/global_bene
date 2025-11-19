@@ -29,6 +29,9 @@ const reportSchema = new Schema({
     handled_by: {
         type: Schema.Types.ObjectId,
         ref: "User"
+    },
+    label: { // Optional: From spam detector
+        type: String
     }
 }, {
     timestamps: true

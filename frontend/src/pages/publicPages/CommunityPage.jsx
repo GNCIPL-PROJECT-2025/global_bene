@@ -13,7 +13,7 @@ import PostCard from '@/components/cards/PostCards';
 import EditCommunityModal from '@/components/common/EditCommunityModal';
 import ManageMembersModal from '@/components/common/ManageMembersModal';
 import { getCommunityByName, joinCommunity, leaveCommunity } from '@/redux/slice/community.slice';
-import { fetchPostsByCommunity } from '@/redux/slice/post.slice';
+import { fetchPostsByCommunity, clearCommunityPosts } from '@/redux/slice/post.slice';
 import {
   Users,
   Calendar,
@@ -31,7 +31,9 @@ import {
   Youtube,
   Linkedin,
   Edit,
-  Settings
+  Settings,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 const CommunityPage = () => {
@@ -52,18 +54,28 @@ const CommunityPage = () => {
 
   useEffect(() => {
     if (communityName) {
-      dispatch(getCommunityByName(communityName));
+      // Clear previous community posts immediately to avoid showing stale posts
+      dispatch(clearCommunityPosts());
+      setCurrentPage(1); // Reset to first page when community changes
+
+      // Fetch community by name
+      dispatch(getCommunityByName(communityName)).unwrap()
+        .catch(() => {
+          // ignore, error handled by slice
+        });
     }
   }, [dispatch, communityName]);
 
+  // Fetch posts when currentPage or currentCommunity changes
   useEffect(() => {
     if (currentCommunity && currentCommunity._id) {
-      dispatch(fetchPostsByCommunity({ 
-        communityId: currentCommunity._id, 
-        params: { limit: 10, page: currentPage } 
+      dispatch(clearCommunityPosts());
+      dispatch(fetchPostsByCommunity({
+        communityId: currentCommunity._id,
+        params: { limit: 10, page: currentPage }
       }));
     }
-  }, [dispatch, currentCommunity, currentPage]);
+  }, [dispatch, currentPage, currentCommunity]);
 
   useEffect(() => {
     if (currentCommunity && user) {
@@ -267,17 +279,34 @@ const CommunityPage = () => {
                     />
                   ))}
                   
-                  {/* Load More Button */}
-                  {communityPagination.currentPage < communityPagination.totalPages && (
-                    <div className="text-center pt-4">
-                      <Button 
+                  {/* Pagination */}
+                  {communityPagination && communityPagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-8">
+                      <Button
                         variant="outline"
-                        onClick={() => {
-                          setCurrentPage(prev => prev + 1);
-                        }}
-                        disabled={postsLoading}
+                        onClick={() => setCurrentPage(prev => prev - 1)}
+                        disabled={currentPage <= 1}
+                        className="flex items-center gap-2"
                       >
-                        Load More Posts
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                      </Button>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          Page {communityPagination.currentPage} of {communityPagination.totalPages}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          ({communityPagination.totalPosts} posts)
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentPage(prev => prev + 1)}
+                        disabled={currentPage >= communityPagination.totalPages}
+                        className="flex items-center gap-2"
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
                   )}

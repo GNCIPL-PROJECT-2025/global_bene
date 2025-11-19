@@ -43,7 +43,7 @@ const ExploreCommunities = () => {
         : (user && community?.members?.some(member => 
             typeof member === 'string' ? member === user._id : member._id === user._id
           )),
-      moderators: community.moderators ? community.moderators.map(mod => mod.fullName) : []
+      moderators: community.moderators ? community.moderators.map(mod => mod.username) : []
     }));
     setTransformedCommunities(transformed);
   }, [communities, user, localJoinStates]);

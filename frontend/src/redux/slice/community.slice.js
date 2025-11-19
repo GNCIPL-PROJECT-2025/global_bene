@@ -147,7 +147,11 @@ const communitySlice = createSlice({
       })
       .addCase(createCommunity.fulfilled, (state, action) => {
         state.createLoading = false;
-        state.communities.unshift(action.payload);
+        // Add new community only if it doesn't already exist
+        const exists = state.communities.some(c => c._id === action.payload._id);
+        if (!exists) {
+          state.communities.unshift(action.payload);
+        }
       })
       .addCase(createCommunity.rejected, (state, action) => {
         state.createLoading = false;
@@ -160,7 +164,11 @@ const communitySlice = createSlice({
       })
       .addCase(getAllCommunities.fulfilled, (state, action) => {
         state.loading = false;
-        state.communities = action.payload;
+        // Ensure unique communities by _id
+        const uniqueCommunities = action.payload.filter((community, index, self) =>
+          index === self.findIndex(c => c._id === community._id)
+        );
+        state.communities = uniqueCommunities;
       })
       .addCase(getAllCommunities.rejected, (state, action) => {
         state.loading = false;
@@ -204,10 +212,10 @@ const communitySlice = createSlice({
         if (index !== -1) {
           state.communities[index] = action.payload.data;
         }
-        // Update current community if it's the one being joined
-        if (state.currentCommunity && state.currentCommunity._id === action.payload.communityId) {
-          state.currentCommunity = action.payload.data;
-        }
+        // Remove duplicates after update
+        state.communities = state.communities.filter((community, index, self) =>
+          index === self.findIndex(c => c._id === community._id)
+        );
       })
       .addCase(joinCommunity.rejected, (state, action) => {
         state.loading = false;
@@ -225,10 +233,10 @@ const communitySlice = createSlice({
         if (index !== -1) {
           state.communities[index] = action.payload.data;
         }
-        // Update current community if it's the one being left
-        if (state.currentCommunity && state.currentCommunity._id === action.payload.communityId) {
-          state.currentCommunity = action.payload.data;
-        }
+        // Remove duplicates after update
+        state.communities = state.communities.filter((community, index, self) =>
+          index === self.findIndex(c => c._id === community._id)
+        );
       })
       .addCase(leaveCommunity.rejected, (state, action) => {
         state.loading = false;
@@ -246,10 +254,10 @@ const communitySlice = createSlice({
         if (index !== -1) {
           state.communities[index] = action.payload;
         }
-        // Update current community if it's the one being updated
-        if (state.currentCommunity && state.currentCommunity._id === action.payload._id) {
-          state.currentCommunity = action.payload;
-        }
+        // Remove duplicates after update
+        state.communities = state.communities.filter((community, index, self) =>
+          index === self.findIndex(c => c._id === community._id)
+        );
       })
       .addCase(updateCommunity.rejected, (state, action) => {
         state.loading = false;

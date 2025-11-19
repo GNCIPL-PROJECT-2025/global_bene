@@ -29,7 +29,8 @@ import {
   X,
   Sun,
   Moon,
-  Bookmark
+  Bookmark,
+  Shield
 } from 'lucide-react';
 import { logout } from '@/redux/slice/auth.slice';
 
@@ -173,15 +174,15 @@ const Navbar = ({ user, notificationsCount = 0 }) => {
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user.avatar?.secure_url} />
-                      <AvatarFallback>{user.fullName?.[0]?.toUpperCase()}</AvatarFallback>
+                      <AvatarFallback>{user.username?.[0]?.toUpperCase()}</AvatarFallback>
                     </Avatar>
                   </motion.button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div className="flex flex-col">
-                      <span className="font-medium">{user.fullName}</span>
-                      <span className="text-sm text-muted-foreground">u/{user.fullName?.toLowerCase().replace(' ', '')}</span>
+                      <span className="font-medium">{user.username}</span>
+                      <span className="text-sm text-muted-foreground">u/{user.username}</span>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -193,6 +194,12 @@ const Navbar = ({ user, notificationsCount = 0 }) => {
                     <Bookmark className="mr-2 h-4 w-4" />
                     Saved Posts
                   </DropdownMenuItem>
+                  {user.role === 'admin' && (
+                    <DropdownMenuItem onClick={() => navigate('/admin/dashboard')}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Admin Panel
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => navigate('/settings')}>
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
@@ -310,11 +317,11 @@ const Navbar = ({ user, notificationsCount = 0 }) => {
                   <div className="flex items-center gap-3 p-2">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user.avatar?.secure_url} />
-                      <AvatarFallback>{user.fullName?.[0]?.toUpperCase()}</AvatarFallback>
+                      <AvatarFallback>{user.username?.[0]?.toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium">{user.fullName}</p>
-                      <p className="text-sm text-muted-foreground">u/{user.fullName?.toLowerCase().replace(' ', '')}</p>
+                      <p className="font-medium">{user.username}</p>
+                      <p className="text-sm text-muted-foreground">u/{user.username}</p>
                     </div>
                   </div>
                   <Button variant="ghost" onClick={() => { navigate('/profile'); setIsMobileMenuOpen(false); }} className="w-full justify-start">
@@ -325,6 +332,12 @@ const Navbar = ({ user, notificationsCount = 0 }) => {
                     <Bookmark className="h-4 w-4 mr-2" />
                     Saved Posts
                   </Button>
+                  {user.role === 'admin' && (
+                    <Button variant="ghost" onClick={() => { navigate('/admin/dashboard'); setIsMobileMenuOpen(false); }} className="w-full justify-start">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Admin Panel
+                    </Button>
+                  )}
                   <Button variant="ghost" onClick={() => { navigate('/settings'); setIsMobileMenuOpen(false); }} className="w-full justify-start">
                     <Settings className="h-4 w-4 mr-2" />
                     Settings

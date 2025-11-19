@@ -193,7 +193,10 @@ const ProfileSettings = ({ user, onUpdate, onAvatarUpdate }) => {
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
+    await handleUpdate();
+  };
 
+  const handleUpdate = async () => {
     if (!validateProfileForm()) return;
 
     setLoading(true);
@@ -519,6 +522,24 @@ const ProfileSettings = ({ user, onUpdate, onAvatarUpdate }) => {
               );
             })}
           </div>
+          <Button
+            type="button"
+            onClick={handleUpdate}
+            className="bg-orange-500 hover:bg-orange-600 mt-4"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader size="sm" className="mr-2" />
+                Updating...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Update Social Links
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
 

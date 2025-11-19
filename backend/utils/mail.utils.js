@@ -10,7 +10,6 @@ export const sendEmail = async ({ email, subject, message }) => {
         },
     })
 
-
     const options = {
         from: `"GNCIPL" <${process.env.SMTP_MAIL}>`,
         to: email,

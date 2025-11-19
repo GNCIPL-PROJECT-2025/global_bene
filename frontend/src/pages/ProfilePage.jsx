@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import MainLayout from '@/Layouts/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +13,8 @@ import { Loader } from '@/components/common/Loader';
 import ProfileSettings from '@/components/ProfileSettings';
 import PostCard from '@/components/cards/PostCards';
 import CommentCard from '@/components/cards/CommentCard';
-import { fetchUserProfile, updateProfile, updateAvatar } from '@/redux/slice/user.slice';
+import { fetchUserProfile, updateProfile, updateAvatar, fetchUserFollowers, fetchUserFollowing } from '@/redux/slice/user.slice';
+import FollowButton from '@/components/common/FollowButton';
 import { getUserPosts } from '@/api/post.api';
 import { getUserComments } from '@/api/comment.api';
 import { getAllCommunities } from '@/redux/slice/community.slice';
@@ -42,8 +43,12 @@ const ProfilePage = () => {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [userPosts, setUserPosts] = useState([]);
   const [userComments, setUserComments] = useState([]);
+  const [userFollowers, setUserFollowers] = useState([]);
+  const [userFollowing, setUserFollowing] = useState([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
+  const [followersLoading, setFollowersLoading] = useState(false);
+  const [followingLoading, setFollowingLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -76,6 +81,10 @@ const ProfilePage = () => {
       fetchUserPosts();
     } else if (activeTab === 'comments' && user && userComments.length === 0) {
       fetchUserComments();
+    } else if (activeTab === 'followers' && user && userFollowers.length === 0) {
+      fetchUserFollowersData();
+    } else if (activeTab === 'following' && user && userFollowing.length === 0) {
+      fetchUserFollowingData();
     }
   }, [activeTab, user]);
 
@@ -160,6 +169,34 @@ const ProfilePage = () => {
       console.error('Failed to fetch user comments:', error);
     } finally {
       setCommentsLoading(false);
+    }
+  };
+
+  const fetchUserFollowersData = async () => {
+    if (!user?._id) return;
+    
+    try {
+      setFollowersLoading(true);
+      const response = await dispatch(fetchUserFollowers({ userId: user._id, page: 1, limit: 10 })).unwrap();
+      setUserFollowers(response.followers || []);
+    } catch (error) {
+      console.error('Failed to fetch user followers:', error);
+    } finally {
+      setFollowersLoading(false);
+    }
+  };
+
+  const fetchUserFollowingData = async () => {
+    if (!user?._id) return;
+    
+    try {
+      setFollowingLoading(true);
+      const response = await dispatch(fetchUserFollowing({ userId: user._id, page: 1, limit: 10 })).unwrap();
+      setUserFollowing(response.following || []);
+    } catch (error) {
+      console.error('Failed to fetch user following:', error);
+    } finally {
+      setFollowingLoading(false);
     }
   };
 
@@ -253,12 +290,12 @@ const ProfilePage = () => {
                     <div className="text-sm text-muted-foreground">Comments</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-xl font-bold text-foreground">{user.stats?.upvotes || 0}</div>
-                    <div className="text-sm text-muted-foreground">Upvotes</div>
+                    <div className="text-xl font-bold text-foreground">{user.num_followers || 0}</div>
+                    <div className="text-sm text-muted-foreground">Followers</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-xl font-bold text-foreground">{user.stats?.downvotes || 0}</div>
-                    <div className="text-sm text-muted-foreground">Downvotes</div>
+                    <div className="text-xl font-bold text-foreground">{user.num_following || 0}</div>
+                    <div className="text-sm text-muted-foreground">Following</div>
                   </div>
                   <div className="text-center">
                     <div className="text-xl font-bold text-foreground">{user.stats?.communities || 0}</div>
@@ -273,7 +310,7 @@ const ProfilePage = () => {
         {/* Profile Content */}
         <div className="space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-8">
+            <TabsList className="grid w-full grid-cols-6 mb-8">
               <TabsTrigger value="overview" className="flex items-center gap-2">
                 <User className="w-4 h-4" />
                 Overview
@@ -285,6 +322,14 @@ const ProfilePage = () => {
               <TabsTrigger value="comments" className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
                 Comments
+              </TabsTrigger>
+              <TabsTrigger value="followers" className="flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Followers
+              </TabsTrigger>
+              <TabsTrigger value="following" className="flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Following
               </TabsTrigger>
               <TabsTrigger value="settings" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
@@ -327,24 +372,39 @@ const ProfilePage = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-3">
-                    {Object.entries(user.social_links).map(([platform, url]) => {
-                      if (!url) return null;
-                      const Icon = getSocialIcon(platform);
-                      return (
-                        <a
-                          key={platform}
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 p-2 rounded-lg border border-border hover:border-primary/50 hover:bg-muted transition-colors"
-                        >
-                          <Icon className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm capitalize">{platform}</span>
-                        </a>
-                      );
-                    })}
-                  </div>
+                  {Object.values(user.social_links || {}).some(url => url) ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {Object.entries(user.social_links).map(([platform, url]) => {
+                        if (!url) return null;
+                        const Icon = getSocialIcon(platform);
+                        return (
+                          <a
+                            key={platform}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 p-2 rounded-lg border border-border hover:border-primary/50 hover:bg-muted transition-colors"
+                          >
+                            <Icon className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm capitalize">{platform}</span>
+                          </a>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-muted-foreground mb-2">No social links added yet</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setActiveTab('settings')}
+                        className="text-xs"
+                      >
+                        <Edit className="w-3 h-3 mr-1" />
+                        Add Social Links
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -446,6 +506,90 @@ const ProfilePage = () => {
                     <Button variant="outline">
                       Browse Communities
                     </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="followers" className="space-y-4">
+              {followersLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader size="lg" />
+                </div>
+              ) : userFollowers.length > 0 ? (
+                <div className="space-y-4">
+                  {userFollowers.map((follower) => (
+                    <Card key={follower._id} className="p-0 overflow-hidden hover:shadow-lg transition-shadow">
+                      <CardContent className="p-4 flex items-center justify-between gap-4">
+                        <Link to={`/user/${follower._id}`} className="flex items-center gap-4 flex-1">
+                          <Avatar>
+                            <AvatarImage src={follower.avatar?.secure_url} alt={follower.username} />
+                            <AvatarFallback>{follower.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h3 className="font-medium">{follower.username}</h3>
+                            <p className="text-sm text-muted-foreground">@{follower.username}</p>
+                          </div>
+                        </Link>
+                        {isAuthenticated && user && user._id !== follower._id && (
+                          <div className="ml-4">
+                            <FollowButton userId={follower._id} size="sm" />
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center py-12">
+                    <User className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">No followers yet</h3>
+                    <p className="text-muted-foreground mb-4">When people follow you, they'll appear here.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="following" className="space-y-4">
+            {followingLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader size="lg" />
+              </div>
+            ) : userFollowing.length > 0 ? (
+              <div className="space-y-4">
+                {userFollowing.map((followedUser) => (
+                  <Card key={followedUser._id} className="p-0 overflow-hidden hover:shadow-lg transition-shadow">
+                    <CardContent className="p-4 flex items-center justify-between gap-4">
+                      <Link to={`/user/${followedUser._id}`} className="flex items-center gap-4 flex-1">
+                        <Avatar>
+                          <AvatarImage src={followedUser.avatar?.secure_url} alt={followedUser.username} />
+                          <AvatarFallback>{followedUser.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h3 className="font-medium">{followedUser.username}</h3>
+                          <p className="text-sm text-muted-foreground">@{followedUser.username}</p>
+                        </div>
+                      </Link>
+                      {isAuthenticated && user && user._id !== followedUser._id && (
+                        <div className="ml-4">
+                          <FollowButton userId={followedUser._id} size="sm" />
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center py-12">
+                    <User className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">Not following anyone yet</h3>
+                    <p className="text-muted-foreground mb-4">Start following people to see their content in your feed.</p>
                   </div>
                 </CardContent>
               </Card>

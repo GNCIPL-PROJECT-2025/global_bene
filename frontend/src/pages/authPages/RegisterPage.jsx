@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Loader }  from '@/components/common/Loader';
 import { Eye, EyeOff, Mail, Lock, User, Phone } from 'lucide-react';
-import { register, clearError } from '../../redux/slice/auth.slice';
+import { register, clearError, sendOtp } from '../../redux/slice/auth.slice';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -25,13 +25,13 @@ const RegisterPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
-  const { loading, error, isAuthenticated } = useSelector((state) => state.auth);
+  const { loading, error, isAuthenticated, user } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && user && user.isVerified) {
       navigate('/');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, user, navigate]);
 
   useEffect(() => {
     if (error) {
@@ -102,7 +102,12 @@ const RegisterPage = () => {
     if (!validateForm()) return;
 
     const { confirmPassword, ...userData } = formData; // Remove confirmPassword before sending
-    dispatch(register(userData));
+    const result = await dispatch(register(userData));
+    if (register.fulfilled.match(result)) {
+      // After successful registration, send OTP
+      await dispatch(sendOtp());
+      navigate('/verify-otp', { state: { method: 'email', contact: formData.email, purpose: 'registration' } });
+    }
   };
 
   return (

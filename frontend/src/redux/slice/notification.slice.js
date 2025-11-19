@@ -6,7 +6,7 @@ import {
   deleteNotification as deleteNotificationApi,
   getUnreadNotificationsCount as getUnreadCountApi
 } from '../../api/notification.api';
-
+  
 // Async thunks
 export const fetchNotifications = createAsyncThunk(
   'notifications/fetchNotifications',

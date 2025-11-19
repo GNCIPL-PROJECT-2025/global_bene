@@ -158,12 +158,29 @@ const userSchema = new Schema({
         default: 0
     },
 
-},
-    {
-        timestamps: true,
+    followers: [{
+        type: Schema.Types.ObjectId,
+        ref: "User"
+    }],
+
+    following: [{
+        type: Schema.Types.ObjectId,
+        ref: "User"
+    }],
+
+    num_followers: {
+        type: Number,
+        default: 0
+    },
+
+    num_following: {
+        type: Number,
+        default: 0
     }
 
-);
+}, {
+    timestamps: true,
+});
 
 
 // * is password modified

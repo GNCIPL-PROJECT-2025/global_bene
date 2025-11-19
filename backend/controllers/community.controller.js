@@ -36,7 +36,7 @@ export const createCommunity = asyncHandler(async (req, res) => {
     let avatar = {};
     const avatarFile = req.files?.find(file => file.fieldname === 'avatar');
     if (avatarFile) {
-        const avatarUpload = await uploadOnCloudinary(avatarFile.path, cloudinaryCommunityRefer, req.user, avatarFile.originalname);
+        const avatarUpload = await uploadOnCloudinary(avatarFile.path, cloudinaryCommunityRefer, req.user, avatarFile.originalname, 'avatar');
         if (avatarUpload) {
             avatar = {
                 public_id: avatarUpload.public_id,
@@ -49,7 +49,7 @@ export const createCommunity = asyncHandler(async (req, res) => {
     let banner = {};
     const bannerFile = req.files?.find(file => file.fieldname === 'banner');
     if (bannerFile) {
-        const bannerUpload = await uploadOnCloudinary(bannerFile.path, cloudinaryCommunityRefer, req.user, bannerFile.originalname);
+        const bannerUpload = await uploadOnCloudinary(bannerFile.path, cloudinaryCommunityRefer, req.user, bannerFile.originalname, 'banner');
         if (bannerUpload) {
             banner = {
                 public_id: bannerUpload.public_id,
@@ -234,7 +234,7 @@ export const updateCommunity = asyncHandler(async (req, res) => {
     // Handle avatar upload
     if (req.files && req.files.find(file => file.fieldname === 'avatar')) {
         const avatarFile = req.files.find(file => file.fieldname === 'avatar');
-        const avatarUpload = await uploadOnCloudinary(avatarFile.path, cloudinaryCommunityRefer, req.user, avatarFile.originalname);
+        const avatarUpload = await uploadOnCloudinary(avatarFile.path, cloudinaryCommunityRefer, req.user, avatarFile.originalname, 'avatar');
         if (avatarUpload) {
             community.avatar = {
                 public_id: avatarUpload.public_id,
@@ -246,7 +246,7 @@ export const updateCommunity = asyncHandler(async (req, res) => {
     // Handle banner upload
     if (req.files && req.files.find(file => file.fieldname === 'banner')) {
         const bannerFile = req.files.find(file => file.fieldname === 'banner');
-        const bannerUpload = await uploadOnCloudinary(bannerFile.path, cloudinaryCommunityRefer, req.user, bannerFile.originalname);
+        const bannerUpload = await uploadOnCloudinary(bannerFile.path, cloudinaryCommunityRefer, req.user, bannerFile.originalname, 'banner');
         if (bannerUpload) {
             community.banner = {
                 public_id: bannerUpload.public_id,

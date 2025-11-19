@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader } from '@/components/common/Loader';
 import { Mail, Phone, ArrowLeft, RotateCcw } from 'lucide-react';
 import { verifyOtp } from '@/api/auth.api';
+import { sendOtp } from '../../redux/slice/auth.slice';
 
 const VerifyOtp = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -16,6 +18,7 @@ const VerifyOtp = () => {
   const inputRefs = useRef([]);
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
 
   const { method, contact, purpose } = location.state || {};
 
@@ -112,10 +115,7 @@ const VerifyOtp = () => {
     setResendLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      console.log('OTP resent to:', { method, contact });
+      await dispatch(sendOtp());
       setResendTimer(30);
       setErrors({});
     } catch (error) {

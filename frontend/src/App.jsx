@@ -20,7 +20,13 @@ import AboutPage from '@/pages/publicPages/AboutPage';
 import ContactPage from '@/pages/publicPages/ContactPage';
 import PrivacyPolicyPage from '@/pages/publicPages/PrivacyPolicyPage';
 import TermsConditionPage from '@/pages/publicPages/TermsConditionPage';
+import AdminDashboard from '@/pages/adminPages/AdminDashboard';
+import UserManagement from '@/pages/adminPages/UserManagement';
+import PostManagement from '@/pages/adminPages/PostManagement';
+import CommunityManagement from '@/pages/adminPages/CommunityManagement';
+import SpamManagement from '@/pages/adminPages/SpamManagement';
 import CommunityPage from '@/pages/publicPages/CommunityPage';
+import UserProfilePage from '@/pages/publicPages/UserProfilePage';
 
 const App = () => {
   return (
@@ -45,7 +51,13 @@ const App = () => {
           <Route path="/help" element={<ContactPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsConditionPage />} />
+          <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><UserManagement /></ProtectedRoute>} />
+          <Route path="/admin/posts" element={<ProtectedRoute requiredRole="admin"><PostManagement /></ProtectedRoute>} />
+          <Route path="/admin/communities" element={<ProtectedRoute requiredRole="admin"><CommunityManagement /></ProtectedRoute>} />
+          <Route path="/admin/spam" element={<ProtectedRoute requiredRole="admin"><SpamManagement /></ProtectedRoute>} />
           <Route path="/r/:communityName" element={<CommunityPage />} />
+          <Route path="/user/:userId" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
           {/* Add more routes as needed */}
         </Routes>
       </div>

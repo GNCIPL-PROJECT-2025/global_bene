@@ -4,7 +4,9 @@ import axiosInstance from './axiosInstance';
 // Create a new post
 export const createPost = async (postData) => {
   try {
-    const response = await axiosInstance.post('/posts', postData);
+    const response = await axiosInstance.post('/posts', postData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data.data;
   } catch (error) {
     throw error.response?.data || error;
@@ -118,6 +120,16 @@ export const getUserPosts = async (userId, params = {}) => {
   try {
     const response = await axiosInstance.get(`/posts/user/${userId}`, { params });
     return response.data.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Report a post
+export const reportPost = async (postId, reason, description) => {
+  try {
+    const response = await axiosInstance.post(`/posts/${postId}/report`, { reason, description });
+    return response.data;
   } catch (error) {
     throw error.response?.data || error;
   }

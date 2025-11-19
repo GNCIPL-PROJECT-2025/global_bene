@@ -9,8 +9,10 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, MessageCircle, Share, Bookmark, Plus, Check, X, Copy, Twitter, Facebook, AlertTriangle } from 'lucide-react';
+import { ArrowUp, ArrowDown, MessageCircle, Share, Bookmark, Plus, Check, X, Copy, Twitter, Facebook, AlertTriangle, EyeOff, Flag } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import ReportModal from '@/components/common/ReportModal';
+import { reportPost } from '@/api/post.api';
 
 const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
   const dispatch = useDispatch();
@@ -33,7 +35,9 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
     score = 0,
     status,
     spamScore = 0,
-    toxicityScore = 0
+    toxicityScore = 0,
+    isSensitive = false,
+    tags = []
   } = post;
 
   // Get community data from Redux state instead of post's embedded data
@@ -53,6 +57,9 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isLoadingSave, setIsLoadingSave] = useState(false);
+  const [isRevealed, setIsRevealed] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
 
   // Check if post should show warning
   const shouldShowWarning = status === 'flagged' || status === 'removed' || spamScore > 0.5 || toxicityScore > 0.5;
@@ -132,7 +139,7 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
     if (navigator.share) {
       navigator.share({
         title: title,
-        text: type === 'link' ? url : body,
+        text: body || url || title,
         url: postUrl,
       });
     } else {
@@ -166,6 +173,24 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
     setIsShareModalOpen(false);
   };
 
+  const handleReportSubmit = async (reportData) => {
+    if (!user) {
+      alert('Please login to report content');
+      return;
+    }
+
+    setIsReporting(true);
+    try {
+      await reportPost(_id, reportData.reason, reportData.description);
+      alert('Report submitted successfully. Thank you for helping keep our community safe.');
+    } catch (error) {
+      alert('Failed to submit report. Please try again.');
+      console.error('Report error:', error);
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -191,9 +216,9 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
                 <AvatarImage src={author?.avatar?.secure_url} />
                 <AvatarFallback>{author?.username?.[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
-              <span className="hover:text-orange-600 cursor-pointer transition-colors truncate">
+              <Link to={`/user/${author?._id}`} className="hover:text-orange-600 cursor-pointer transition-colors truncate">
                 u/{author?.username}
-              </span>
+              </Link>
               <span>•</span>
               <span className="truncate">{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
             </div>
@@ -243,49 +268,88 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
           </div>
         )}
 
+        {/* Sensitive Content Warning */}
+        {isSensitive && (
+          <div className="px-6 py-2 border-b bg-red-50 border-red-200">
+            <div className="flex items-center gap-2 text-red-800">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span className="text-sm font-medium">
+                This post has been flagged for review due to potential spam or inappropriate content.
+              </span>
+            </div>
+          </div>
+        )}
+
         <CardContent>
           <div className="flex gap-3">
             {/* Post content */}
-            <div className="flex-1">
+            <div className="flex-1 relative">
               <Link to={`/post/${_id}`}>
                 <h3 className="text-lg font-semibold mb-2 hover:text-blue-600 cursor-pointer">
                   {title}
                 </h3>
               </Link>
 
-              {type === 'text' && (
-                <p className="text-gray-700 mb-3 line-clamp-3">
-                  {body}
-                </p>
+              {/* Tags */}
+              {tags && tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {tags.map((tag, index) => (
+                    <Badge 
+                      key={`${tag}-${index}`}
+                      variant="secondary" 
+                      className="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200"
+                    >
+                      #{tag}
+                    </Badge>
+                  ))}
+                </div>
               )}
 
-              {type === 'image' && media?.secure_url && (
-                <img
-                  src={media.secure_url}
-                  alt={title}
-                  className="max-w-full h-auto rounded-lg mb-3"
-                />
-              )}
+              <div className={`relative ${isSensitive && !isRevealed ? 'blur-lg select-none' : ''}`}>
+                {body && (
+                  <p className="text-muted-foreground mb-3 line-clamp-3">
+                    {body}
+                  </p>
+                )}
 
-              {type === 'video' && media?.secure_url && (
-                <video
-                  src={media.secure_url}
-                  controls
-                  className="max-w-full h-auto rounded-lg mb-3"
-                >
-                  Your browser does not support the video tag.
-                </video>
-              )}
+                {media?.secure_url && (
+                  <img
+                    src={media.secure_url}
+                    alt={title}
+                    className="w-full max-h-96 object-cover rounded-lg mb-3"
+                  />
+                )}
 
-              {type === 'link' && url && (
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 underline mb-3 block"
-                >
-                  {url}
-                </a>
+                {url && (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 underline mb-3 block"
+                  >
+                    {url}
+                  </a>
+                )}
+              </div>
+
+              {isSensitive && !isRevealed && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
+                  <div className="flex flex-col items-center gap-2">
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => setIsRevealed(true)}
+                      className="p-3 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors"
+                      title="View sensitive content at your own risk and potential harm"
+                    >
+                      <EyeOff className="h-6 w-6 text-gray-700" />
+                    </motion.button>
+                    <div className="flex items-center gap-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium">
+                      <AlertTriangle className="h-3 w-3" />
+                      Sensitive Content
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* Action buttons - Modern horizontal layout */}
@@ -342,6 +406,15 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
                   <Bookmark className={`h-3 w-3 sm:h-4 sm:w-4 ${isSaved ? 'fill-current' : ''}`} />
                   <span className="font-medium hidden sm:inline">{isSaved ? 'Saved' : 'Save'}</span>
                 </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-2 rounded-full hover:bg-red-50 hover:text-red-600 transition-all duration-200 text-muted-foreground"
+                >
+                  <Flag className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="font-medium hidden sm:inline">Report</span>
+                </motion.button>
               </div>
             </div>
           </div>
@@ -387,6 +460,16 @@ const PostCard = ({ post, onUpvote, onDownvote, onComment }) => {
           </div>
         </div>
       )}
+
+      {/* Report Modal */}
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        targetType="post"
+        targetId={_id}
+        onSubmit={handleReportSubmit}
+        isLoading={isReporting}
+      />
     </motion.div>
   );
 };

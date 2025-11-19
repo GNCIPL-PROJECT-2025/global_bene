@@ -14,7 +14,7 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-const uploadOnCloudinary = async (localFilePath, refer = "", user = null, originalName = "") => {
+const uploadOnCloudinary = async (localFilePath, refer = "", user = null, originalName = "", fieldName = "") => {
     try {
         if (!localFilePath) {
             return "No file have uploaded";
@@ -34,7 +34,14 @@ const uploadOnCloudinary = async (localFilePath, refer = "", user = null, origin
                 folder = "GNCIPL/posts";
                 resource_type = "image";
             } else if (refer === cloudinaryCommunityRefer) {
-                publicId = `${safeName}-community`;
+                // For community, distinguish between avatar and banner
+                if (fieldName === 'avatar') {
+                    publicId = `${safeName}-community-avatar`;
+                } else if (fieldName === 'banner') {
+                    publicId = `${safeName}-community-banner`;
+                } else {
+                    publicId = `${safeName}-community`;
+                }
                 folder = "GNCIPL/communities";
                 resource_type = "image";
             } else {

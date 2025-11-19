@@ -9,14 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft,
-  Type,
   Image as ImageIcon,
-  Link as LinkIcon,
   Upload,
   X,
   AlertCircle,
@@ -33,8 +30,16 @@ const CreatePostPage = () => {
   const { loading, error } = useSelector(state => state.post);
 
   const [communities, setCommunities] = useState([]);
+  // derived list: communities the current user has joined
+  const joinedCommunities = (communities || []).filter(c => {
+    if (!c) return false;
+    // members may be array of ids or objects
+    const members = c.members || [];
+    if (!user) return false;
+    return members.some(member => typeof member === 'string' ? member === user._id : member._id === user._id);
+  });
   const [communitiesLoading, setCommunitiesLoading] = useState(true);
-  const [postType, setPostType] = useState('text');
+  const [postType, setPostType] = useState('combined');
   const [selectedCommunity, setSelectedCommunity] = useState('');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -80,24 +85,20 @@ const CreatePostPage = () => {
       newErrors.title = 'Title must be less than 300 characters';
     }
 
-    if (postType === 'text' && !content.trim()) {
-      newErrors.content = 'Post content is required';
-    } else if (postType === 'text' && content.length > 40000) {
+    if (!content.trim() && !url.trim() && !imageFile) {
+      newErrors.content = 'Please provide content, a URL, or upload an image';
+    }
+
+    if (content.trim() && content.length > 40000) {
       newErrors.content = 'Post content must be less than 40,000 characters';
     }
 
-    if (postType === 'link' && !url.trim()) {
-      newErrors.url = 'URL is required';
-    } else if (postType === 'link' && url.trim()) {
+    if (url.trim()) {
       try {
         new URL(url);
       } catch {
         newErrors.url = 'Please enter a valid URL';
       }
-    }
-
-    if (postType === 'image' && !imageFile) {
-      newErrors.image = 'Please select an image';
     }
 
     setErrors(newErrors);
@@ -126,14 +127,20 @@ const CreatePostPage = () => {
       const formData = new FormData();
       formData.append('title', title.trim());
       formData.append('communityId', selectedCommunity);
-      formData.append('type', postType);
+      formData.append('type', 'text'); // Default type
 
-      // Add content based on post type
-      if (postType === 'text') {
+      // Add content if provided
+      if (content.trim()) {
         formData.append('body', content.trim());
-      } else if (postType === 'link') {
+      }
+
+      // Add URL if provided
+      if (url.trim()) {
         formData.append('url', url.trim());
-      } else if (postType === 'image' && imageFile) {
+      }
+
+      // Add image if provided
+      if (imageFile) {
         formData.append('media', imageFile);
       }
 
@@ -196,7 +203,8 @@ const CreatePostPage = () => {
                     {communitiesLoading ? (
                       <div className="p-2 text-sm text-muted-foreground">Loading communities...</div>
                     ) : communities.length > 0 ? (
-                      communities.map(community => (
+                      // Only show communities the user has joined
+                      (joinedCommunities.length > 0 ? joinedCommunities : []).map(community => (
                         <SelectItem key={community._id} value={community._id}>
                           g/{community.title}
                         </SelectItem>
@@ -216,165 +224,142 @@ const CreatePostPage = () => {
             </CardContent>
           </Card>
 
-          {/* Post Type Selection */}
+          {/* Post Content */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Post Type</CardTitle>
+              <CardTitle className="text-lg">Post Content</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Tabs value={postType} onValueChange={setPostType} className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="text" className="flex items-center gap-2">
-                    <Type className="h-4 w-4" />
-                    Text
-                  </TabsTrigger>
-                  <TabsTrigger value="image" className="flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4" />
-                    Image
-                  </TabsTrigger>
-                  <TabsTrigger value="link" className="flex items-center gap-2">
-                    <LinkIcon className="h-4 w-4" />
-                    Link
-                  </TabsTrigger>
-                </TabsList>
-
-                {/* Title - Common to all post types */}
-                <div className="mt-6 space-y-2">
-                  <Label htmlFor="title" className="text-sm font-semibold">Title *</Label>
-                  <Input
-                    id="title"
-                    placeholder="Give your post a title..."
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className={errors.title ? 'border-red-500' : ''}
-                    maxLength={300}
-                  />
-                  <div className="flex justify-between items-center">
-                    {errors.title && (
-                      <div className="flex items-center gap-1 text-red-500 text-sm">
-                        <AlertCircle className="h-4 w-4" />
-                        {errors.title}
-                      </div>
-                    )}
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      {title.length}/300
-                    </span>
-                  </div>
+            <CardContent className="space-y-6">
+              {/* Title - Common */}
+              <div className="space-y-2">
+                <Label htmlFor="title" className="text-sm font-semibold">Title *</Label>
+                <Input
+                  id="title"
+                  placeholder="Give your post a title..."
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className={errors.title ? 'border-red-500' : ''}
+                  maxLength={300}
+                />
+                <div className="flex justify-between items-center">
+                  {errors.title && (
+                    <div className="flex items-center gap-1 text-red-500 text-sm">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.title}
+                    </div>
+                  )}
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {title.length}/300
+                  </span>
                 </div>
+              </div>
 
-                {/* Text Post Content */}
-                <TabsContent value="text" className="mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="content" className="text-sm font-semibold">Content *</Label>
-                    <Textarea
-                      id="content"
-                      placeholder="What's on your mind? Share your thoughts..."
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      className={`min-h-32 ${errors.content ? 'border-red-500' : ''}`}
-                      maxLength={40000}
-                    />
-                    <div className="flex justify-between items-center">
-                      {errors.content && (
-                        <div className="flex items-center gap-1 text-red-500 text-sm">
-                          <AlertCircle className="h-4 w-4" />
-                          {errors.content}
-                        </div>
-                      )}
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {content.length}/40,000
-                      </span>
+              {/* Content */}
+              <div className="space-y-2">
+                <Label htmlFor="content" className="text-sm font-semibold">Content (Optional)</Label>
+                <Textarea
+                  id="content"
+                  placeholder="What's on your mind? Share your thoughts..."
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  className={`min-h-32 ${errors.content ? 'border-red-500' : ''}`}
+                  maxLength={40000}
+                />
+                <div className="flex justify-between items-center">
+                  {errors.content && (
+                    <div className="flex items-center gap-1 text-red-500 text-sm">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.content}
                     </div>
-                  </div>
-                </TabsContent>
+                  )}
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {content.length}/40,000
+                  </span>
+                </div>
+              </div>
 
-                {/* Image Post Content */}
-                <TabsContent value="image" className="mt-4">
-                  <div className="space-y-4">
-                    <Label className="text-sm font-semibold">Upload Image</Label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-                      {imagePreview ? (
-                        <div className="space-y-4">
-                          <div className="relative max-w-md mx-auto">
-                            <img
-                              src={imagePreview}
-                              alt="Preview"
-                              className="w-full h-auto rounded-lg"
-                            />
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              className="absolute top-2 right-2"
-                              onClick={() => {
-                                setImageFile(null);
-                                setImagePreview(null);
-                              }}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <p className="text-sm text-muted-foreground text-center">
-                            Image uploaded successfully
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="text-center">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleImageUpload(e.target.files[0])}
-                            className="hidden"
-                            id="image-upload"
-                          />
-                          <label htmlFor="image-upload">
-                            <div className="cursor-pointer">
-                              <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                              <p className="text-sm text-muted-foreground mb-2">
-                                Click to upload an image
-                              </p>
-                              <Button type="button" variant="outline" size="sm">
-                                <Upload className="h-4 w-4 mr-2" />
-                                Choose File
-                              </Button>
-                            </div>
-                          </label>
-                          {errors.image && (
-                            <div className="flex items-center justify-center gap-1 text-red-500 text-sm mt-2">
-                              <AlertCircle className="h-4 w-4" />
-                              {errors.image}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Supported formats: JPG, PNG, GIF. Max size: 10MB
-                    </p>
+              {/* URL */}
+              <div className="space-y-2">
+                <Label htmlFor="url" className="text-sm font-semibold">URL (Optional)</Label>
+                <Input
+                  id="url"
+                  type="url"
+                  placeholder="https://example.com"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  className={errors.url ? 'border-red-500' : ''}
+                />
+                {errors.url && (
+                  <div className="flex items-center gap-1 text-red-500 text-sm">
+                    <AlertCircle className="h-4 w-4" />
+                    {errors.url}
                   </div>
-                </TabsContent>
+                )}
+              </div>
 
-                {/* Link Post Content */}
-                <TabsContent value="link" className="mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="url" className="text-sm font-semibold">URL *</Label>
-                    <Input
-                      id="url"
-                      type="url"
-                      placeholder="https://example.com"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      className={errors.url ? 'border-red-500' : ''}
-                    />
-                    {errors.url && (
-                      <div className="flex items-center gap-1 text-red-500 text-sm">
-                        <AlertCircle className="h-4 w-4" />
-                        {errors.url}
+              {/* Image Upload */}
+              <div className="space-y-4">
+                <Label className="text-sm font-semibold">Upload Image (Optional)</Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                  {imagePreview ? (
+                    <div className="space-y-4">
+                      <div className="relative max-w-md mx-auto">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-full h-auto rounded-lg"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-2 right-2"
+                          onClick={() => {
+                            setImageFile(null);
+                            setImagePreview(null);
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
-                    )}
-                  </div>
-                </TabsContent>
-              </Tabs>
+                      <p className="text-sm text-muted-foreground text-center">
+                        Image uploaded successfully
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e.target.files[0])}
+                        className="hidden"
+                        id="image-upload"
+                      />
+                      <label htmlFor="image-upload">
+                        <div className="cursor-pointer">
+                          <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Click to upload an image
+                          </p>
+                          <Button type="button" variant="outline" size="sm">
+                            <Upload className="h-4 w-4 mr-2" />
+                            Choose File
+                          </Button>
+                        </div>
+                      </label>
+                      {errors.image && (
+                        <div className="flex items-center justify-center gap-1 text-red-500 text-sm mt-2">
+                          <AlertCircle className="h-4 w-4" />
+                          {errors.image}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Supported formats: JPG, PNG, GIF. Max size: 10MB
+                </p>
+              </div>
             </CardContent>
           </Card>
 
@@ -389,11 +374,11 @@ const CreatePostPage = () => {
                   <div className="flex items-start gap-3">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user?.avatar?.secure_url} />
-                      <AvatarFallback>{user?.fullName?.[0]?.toUpperCase()}</AvatarFallback>
+                      <AvatarFallback>{user?.username?.[0]?.toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                        <span className="font-medium">u/{user?.fullName?.toLowerCase().replace(' ', '')}</span>
+                        <span className="font-medium">u/{user?.username}</span>
                         <span>in</span>
                         <Badge variant="secondary" className="text-xs">
                           g/{communities.find(c => c._id === selectedCommunity)?.name || selectedCommunity}
@@ -401,12 +386,12 @@ const CreatePostPage = () => {
                       </div>
                       <h3 className="font-semibold text-lg mb-2">{title}</h3>
 
-                      {postType === 'text' && content && (
-                        <p className="text-sm text-muted-foreground line-clamp-3">{content}</p>
+                      {content && (
+                        <p className="text-sm text-muted-foreground mb-2 line-clamp-3">{content}</p>
                       )}
 
-                      {postType === 'image' && imagePreview && (
-                        <div className="mt-2">
+                      {imagePreview && (
+                        <div className="mb-2">
                           <img
                             src={imagePreview}
                             alt="Post preview"
@@ -415,8 +400,8 @@ const CreatePostPage = () => {
                         </div>
                       )}
 
-                      {postType === 'link' && url && (
-                        <div className="mt-2 p-3 bg-card rounded border">
+                      {url && (
+                        <div className="mb-2 p-3 bg-card rounded border">
                           <Link className="text-blue-600 hover:underline text-sm break-all">
                             {url}
                           </Link>

@@ -16,7 +16,13 @@ import {
     deleteUser,
     updateUserAvatar,
     googleAuthCallback,
-    refreshAccessToken
+    refreshAccessToken,
+    followUser,
+    unfollowUser,
+    getUserFollowers,
+    getUserFollowing,
+    checkFollowStatus,
+    getUserById
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
@@ -49,6 +55,14 @@ router.route("/update-avatar").put(verifyJWT, upload.single("avatar"), updateUse
 router.route("/delete-profile").delete(verifyJWT, deleteUser)
 router.route("/logout").get(verifyJWT, logoutUser)
 router.route("/refresh-token").post(refreshAccessToken)
+
+// *Follow/Unfollow routes
+router.route("/:userId/follow").post(verifyJWT, followUser)
+router.route("/:userId/unfollow").post(verifyJWT, unfollowUser)
+router.route("/:userId/followers").get(verifyJWT, getUserFollowers)
+router.route("/:userId/following").get(verifyJWT, getUserFollowing)
+router.route("/:userId/follow-status").get(verifyJWT, checkFollowStatus)
+router.route("/:userId").get(verifyJWT, getUserById)
 
 
 export default router;

@@ -7,11 +7,7 @@ const postSchema = new Schema({
         maxlength: [300, "Title cannot be more than 300 characters"]
     },
     body: {
-        type: String,
-        required: function() {
-            // Content is required for text and link posts, optional for image/video posts
-            return this.type === 'text' || this.type === 'link';
-        }
+        type: String
     },
     url: {
         type: String,
@@ -32,7 +28,6 @@ const postSchema = new Schema({
     },
     type: {
         type: String,
-        enum: ["text", "link", "image", "video"],
         default: "text"
     },
     media: {
@@ -68,13 +63,13 @@ const postSchema = new Schema({
         type: Boolean,
         default: false
     },
-    spamScore: {
-        type: Number,
-        default: 0
+    label:{
+        type: String,
+        default: 'safe'
     },
-    toxicityScore: {
-        type: Number,
-        default: 0
+    isSensitive: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true
