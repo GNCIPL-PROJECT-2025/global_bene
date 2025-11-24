@@ -5,6 +5,15 @@ import axiosInstance from "./axiosInstance";
 // 📝 Register user
 export const registerUser = async (userData) => {
   const { data } = await axiosInstance.post("/users/register", userData);
+  // store tokens after registration
+  if (data.accessToken) {
+    localStorage.setItem("accessToken", data.accessToken);
+    document.cookie = `accessToken=${data.accessToken}; path=/; max-age=${3 * 24 * 60 * 60}; SameSite=Strict`;
+  }
+  if (data.refreshToken) {
+    localStorage.setItem("refreshToken", data.refreshToken);
+    document.cookie = `refreshToken=${data.refreshToken}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Strict`;
+  }
   return data;
 };
 
@@ -15,6 +24,12 @@ export const loginUser = async (credentials) => {
   // store access token (short-lived)
   if (data.accessToken) {
     localStorage.setItem("accessToken", data.accessToken);
+    document.cookie = `accessToken=${data.accessToken}; path=/; max-age=${3 * 24 * 60 * 60}; SameSite=Strict`;
+  }
+  // store refresh token
+  if (data.refreshToken) {
+    localStorage.setItem("refreshToken", data.refreshToken);
+    document.cookie = `refreshToken=${data.refreshToken}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Strict`;
   }
   return data;
 };
@@ -23,6 +38,10 @@ export const loginUser = async (credentials) => {
 export const logoutUser = async () => {
   const { data } = await axiosInstance.get("/users/logout");
   localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  // clear cookies
+  document.cookie = "accessToken=; path=/; max-age=0; SameSite=Strict";
+  document.cookie = "refreshToken=; path=/; max-age=0; SameSite=Strict";
   return data;
 };
 
@@ -38,6 +57,12 @@ export const verifyOtp = async (otpData) => {
   // store access token if verification successful
   if (data.accessToken) {
     localStorage.setItem("accessToken", data.accessToken);
+    document.cookie = `accessToken=${data.accessToken}; path=/; max-age=${3 * 24 * 60 * 60}; SameSite=Strict`;
+  }
+  // store refresh token
+  if (data.refreshToken) {
+    localStorage.setItem("refreshToken", data.refreshToken);
+    document.cookie = `refreshToken=${data.refreshToken}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Strict`;
   }
   return data;
 };
