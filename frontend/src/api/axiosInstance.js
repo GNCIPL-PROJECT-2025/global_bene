@@ -1,29 +1,23 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://global-bene-ko22.onrender.com/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // allows sending cookies (refresh token)
   headers: {
     "Content-Type": "application/json",
   },
 });
 
 // 🔄 Auto attach token
-let accessToken = null;
-
 axiosInstance.interceptors.request.use(
   (config) => {
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
-
+    const token = localStorage.getItem("accessToken");
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)
 );
-
 
 // 🔁 Handle token expiry (refresh logic) - FIXED: Only trigger for authenticated sessions
 axiosInstance.interceptors.response.use(
@@ -41,8 +35,11 @@ axiosInstance.interceptors.response.use(
 
       try {
         // Try to refresh the token
-        const refreshResponse = await axios.post(`${API_BASE_URL}/users/refresh-token`, {}, {
-          withCredentials: true
+        const refreshToken = localStorage.getItem('refreshToken');
+        const refreshResponse = await axios.post(`${API_BASE_URL}/users/refresh-token`, { refreshToken }, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
         });
 
         if (refreshResponse.data.accessToken) {
