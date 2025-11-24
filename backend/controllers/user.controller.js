@@ -221,16 +221,8 @@ const logoutUser = asyncHandler(async (req, res, next) => {
         } catch (error) {
         }
 
-        const options = {
-            httpOnly: true,
-            secure: true
-        }
-
-
         return res
             .status(200)
-            .clearCookie("accessToken", options)
-            .clearCookie("refreshToken", options)
             .json({
                 success: true,
                 message: "User Logged Out Successfully!",
@@ -320,17 +312,8 @@ const verifyOtpForUser = asyncHandler(async (req, res, next) => {
         user._id
     );
 
-    const options = {
-        httpOnly: true,
-        secure: true,
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
-        sameSite: "Strict"
-    }
-
     const resUser = await User.findById(user._id).select("-password -refreshToken");
     return res.status(200)
-        .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", refreshToken, options)
         .json({
             success: true,
             message: `${email} verified successfully\nUser Created`,
@@ -758,18 +741,8 @@ const googleAuthCallback = asyncHandler(async (req, res, next) => {
         user.refreshToken = refreshToken;
         await user.save({ validateBeforeSave: false });
 
-        // Set cookies
-        const options = {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'Strict'
-        };
-
-        res.cookie('accessToken', accessToken, options);
-        res.cookie('refreshToken', refreshToken, options);
-
         // Redirect to frontend with success
-        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/?auth=success`);
+        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/?auth=success&accessToken=${accessToken}&refreshToken=${refreshToken}`);
     } catch (error) {
         console.error('Google auth callback error:', error);
         res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=Authentication failed`);
