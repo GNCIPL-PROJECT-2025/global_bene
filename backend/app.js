@@ -23,7 +23,7 @@ app.use(express.json({ limit: "256kb" }));
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser());
 
-const isProduction = process.env.NODE_ENV === "production";
+
 
 // Session middleware
 app.use(session({
