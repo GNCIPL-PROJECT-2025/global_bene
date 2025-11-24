@@ -22,9 +22,8 @@ export const register = createAsyncThunk(
   async (userData, { rejectWithValue, dispatch }) => {
     try {
       const response = await registerApi(userData);
-      // After successful registration, fetch complete user profile with stats
-      const profileData = await getCurrentUser();
-      return { ...response, user: profileData.user || profileData };
+      // User profile will be fetched after OTP verification
+      return { ...response, user: response.user };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Registration failed');
     }
