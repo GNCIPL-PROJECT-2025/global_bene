@@ -724,6 +724,32 @@ const deleteUser = asyncHandler(async (req, res, next) => {
 });
 
 // *Google OAuth Callback
+// const googleAuthCallback = asyncHandler(async (req, res, next) => {
+//     try {
+//         // User is authenticated via passport, req.user contains the user
+//         const user = req.user;
+
+//         if (!user) {
+//             return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=Google authentication failed`);
+//         }
+
+//         // Generate tokens
+//         const accessToken = await user.generateAccessToken();
+//         const refreshToken = await user.generateRefreshToken();
+
+//         // Save refresh token
+//         user.refreshToken = refreshToken;
+//         await user.save({ validateBeforeSave: false });
+
+//         // Redirect to frontend with success
+//         res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/?auth=success&accessToken=${accessToken}&refreshToken=${refreshToken}`);
+//     } catch (error) {
+//         console.error('Google auth callback error:', error);
+//         res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=Authentication failed`);
+//     }
+// });
+
+// *Google OAuth Callback
 const googleAuthCallback = asyncHandler(async (req, res, next) => {
     try {
         // User is authenticated via passport, req.user contains the user
@@ -741,14 +767,24 @@ const googleAuthCallback = asyncHandler(async (req, res, next) => {
         user.refreshToken = refreshToken;
         await user.save({ validateBeforeSave: false });
 
-        // Redirect to frontend with success
+        // Set cookies
+        const isProduction = process.env.NODE_ENV === "production";
+        const options = {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? "none" : "lax"
+        };
+
+        res.cookie('accessToken', accessToken, options);
+        res.cookie('refreshToken', refreshToken, options);
+
+        // Redirect to frontend with tokens for localStorage
         res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/?auth=success&accessToken=${accessToken}&refreshToken=${refreshToken}`);
     } catch (error) {
         console.error('Google auth callback error:', error);
         res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=Authentication failed`);
     }
 });
-
 // *Follow User
 const followUser = asyncHandler(async (req, res, next) => {
     const { userId } = req.params;
