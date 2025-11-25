@@ -100,6 +100,7 @@ const commentSlice = createSlice({
     commentsByPost: {}, // { postId: { comments: [], loading: false, error: null } }
     repliesByComment: {}, // { commentId: { replies: [], loading: false, error: null } }
     loading: false,
+    creatingComment: false,
     error: null
   },
   reducers: {
@@ -227,10 +228,12 @@ const commentSlice = createSlice({
     builder
       // Create comment
       .addCase(createComment.pending, (state) => {
+        state.creatingComment = true;
         state.loading = true;
         state.error = null;
       })
       .addCase(createComment.fulfilled, (state, action) => {
+        state.creatingComment = false;
         state.loading = false;
         const newComment = action.payload;
         const postId = newComment.post_id;
@@ -271,6 +274,7 @@ const commentSlice = createSlice({
         }
       })
       .addCase(createComment.rejected, (state, action) => {
+        state.creatingComment = false;
         state.loading = false;
         state.error = action.payload;
       })

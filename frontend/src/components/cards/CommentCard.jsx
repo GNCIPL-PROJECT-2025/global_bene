@@ -86,6 +86,7 @@ const CommentCard = ({
   const replies = useSelector(state => selectRepliesForComment(state, _id));
   const loadingReplies = useSelector(state => selectLoadingRepliesForComment(state, _id));
   const { user } = useSelector(state => state.auth);
+  const { creatingComment } = useSelector(state => state.comment);
 
   const marginLeft = Math.min(depth * 20, 80); // Progressive indentation with max limit
 
@@ -166,17 +167,17 @@ const CommentCard = ({
     }
   };
 
-  const handleReply = async () => {
-    if (!replyContent.trim()) return;
+  // const handleReply = async () => {
+  //   if (!replyContent.trim()) return;
     
-    try {
-      await onReply(_id, replyContent.trim());
-      setReplyContent('');
-      setShowReplyForm(false);
-    } catch (error) {
-      console.error('Failed to post reply:', error);
-    }
-  };
+  //   try {
+  //     await onReply(_id, replyContent.trim());
+  //     setReplyContent('');
+  //     setShowReplyForm(false);
+  //   } catch (error) {
+  //     console.error('Failed to post reply:', error);
+  //   }
+  // };
 
   const handleReportSubmit = async (reportData) => {
     if (!user) {
@@ -193,6 +194,17 @@ const CommentCard = ({
       console.error('Report error:', error);
     } finally {
       setIsReporting(false);
+    }
+  };
+
+  const handleReply = async () => {
+    if (!replyContent.trim()) return;
+    try {
+      await onReply(_id, replyContent);
+      setReplyContent('');
+      setShowReplyForm(false);
+    } catch (error) {
+      console.error('Failed to post reply:', error);
     }
   };
 
@@ -437,10 +449,17 @@ const CommentCard = ({
                       <Button 
                         size="sm" 
                         onClick={handleReply}
-                        disabled={!replyContent.trim()}
+                        disabled={!replyContent.trim() || creatingComment}
                         className="bg-primary hover:bg-primary/90 h-7 px-3 text-xs"
                       >
-                        Post Reply
+                        {creatingComment ? (
+                          <div className="flex items-center gap-1">
+                            <div className="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent"></div>
+                            Posting...
+                          </div>
+                        ) : (
+                          'Post Reply'
+                        )}
                       </Button>
                     </div>
                   </div>

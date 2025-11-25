@@ -24,7 +24,7 @@ const PostDetailPage = () => {
   const { postId } = useParams();
   const dispatch = useDispatch();
   const { currentPost, loading: postLoading, error: postError } = useSelector(state => state.post);
-  const { commentsByPost, repliesByComment, loading: commentLoading, error: commentError } = useSelector(state => state.comment);
+  const { commentsByPost, repliesByComment, loading: commentLoading, creatingComment, error: commentError } = useSelector(state => state.comment);
   const { communities, loading: communitiesLoading } = useSelector(state => state.community);
   const { user } = useSelector(state => state.auth);
   const { joinPostRoom, leavePostRoom } = useSocket();
@@ -187,8 +187,15 @@ const PostDetailPage = () => {
               rows={3}
             />
             <div className="flex justify-end">
-              <Button onClick={handleCreateComment} disabled={!newComment.trim()}>
-                Post Comment
+              <Button onClick={handleCreateComment} disabled={!newComment.trim() || creatingComment}>
+                {creatingComment ? (
+                  <div className="flex items-center gap-2">
+                    <Loader size="sm" />
+                    Posting...
+                  </div>
+                ) : (
+                  'Post Comment'
+                )}
               </Button>
             </div>
           </div>
