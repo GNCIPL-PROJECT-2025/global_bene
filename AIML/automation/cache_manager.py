@@ -17,9 +17,9 @@ class CacheManager:
                 decode_responses=True
             )
             self.redis_client.ping()
-            logger.info(f"✓ Connected to Redis ({REDIS_HOST}:{REDIS_PORT})")
+            logger.info(f" Connected to Redis ({REDIS_HOST}:{REDIS_PORT})")
         except Exception as e:
-            logger.error(f"✗ Redis connection failed: {e}")
+            logger.error(f" Redis connection failed: {e}")
             raise
     
     def cache_recommendations(self, user_id, recommendations):
@@ -45,7 +45,7 @@ class CacheManager:
     def clear_all_cache(self):
         try:
             self.redis_client.flushdb()
-            logger.info("✓ Cache cleared")
+            logger.info(" Cache cleared")
             return True
         except Exception as e:
             logger.error(f"Error clearing cache: {e}")
@@ -71,3 +71,4 @@ def get_cache_manager():
     if _cache is None:
         _cache = CacheManager()
     return _cache
+
