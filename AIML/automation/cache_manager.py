@@ -72,3 +72,4 @@ def get_cache_manager():
         _cache = CacheManager()
     return _cache
 
+
