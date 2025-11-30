@@ -21,7 +21,7 @@ if ('serviceWorker' in navigator) {
       });
   });
 }
-
+// Hello
 // Check auth status on app load
 store.dispatch(checkAuthStatus());
 
