@@ -133,6 +133,8 @@ const AppContent = () => {
       <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-500"></div></div>}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/all" element={<LandingPage />} />
+          <Route path="/popular" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />

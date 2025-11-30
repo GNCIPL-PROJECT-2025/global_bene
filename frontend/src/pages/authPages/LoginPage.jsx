@@ -94,9 +94,24 @@ const LoginPage = () => {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="mx-auto w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mb-4"
+              className="mx-auto mb-4"
             >
-              <span className="text-white font-bold text-xl">G</span>
+              <img
+                src="/global_bane2-bg.png"
+                alt="Global Bene"
+                className="w-12 h-12 object-contain mx-auto"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.style.display = 'none';
+                  document.getElementById('login-logo-fallback')?.style.removeProperty('display');
+                }}
+                onLoad={(e) => {
+                  document.getElementById('login-logo-fallback')?.style.setProperty('display', 'none', 'important');
+                }}
+              />
+              <div id="login-logo-fallback" style={{ display: 'none' }} className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto">
+                <span className="text-white font-bold text-xl">G</span>
+              </div>
             </motion.div>
             <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">Sign in</CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400">

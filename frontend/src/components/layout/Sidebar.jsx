@@ -13,41 +13,6 @@ const Sidebar = ({ communities = [], userCommunities = [], onCreateCommunity }) 
 
   return (
     <div className="w-80 space-y-4">
-      {/* Create Community Card */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <Plus className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Create Community</h3>
-                <p className="text-sm text-muted-foreground">Share your interests</p>
-              </div>
-            </div>
-            {onCreateCommunity ? (
-              <Button
-                onClick={onCreateCommunity}
-                className="w-full bg-primary hover:bg-primary/90"
-              >
-                Create Community
-              </Button>
-            ) : (
-              <Button asChild className="w-full bg-primary hover:bg-primary/90">
-                <Link to="/create-community">
-                  Create Community
-                </Link>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
-
       {/* Popular Communities */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
@@ -143,36 +108,6 @@ const Sidebar = ({ communities = [], userCommunities = [], onCreateCommunity }) 
           </Card>
         </motion.div>
       )}
-
-      {/* Footer Links */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.3, delay: 0.3 }}
-      >
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <Link to="/about" className="block hover:text-blue-600 transition-colors">
-                About Global Bene
-              </Link>
-              <Link to="/help" className="block hover:text-blue-600 transition-colors">
-                Help Center
-              </Link>
-              <Link to="/privacy" className="block hover:text-blue-600 transition-colors">
-                Privacy Policy
-              </Link>
-              <Link to="/terms" className="block hover:text-blue-600 transition-colors">
-                Terms of Service
-              </Link>
-            </div>
-            <Separator className="my-3" />
-            <p className="text-xs text-muted-foreground">
-              © 2025 Global Bene. All rights reserved.
-            </p>
-          </CardContent>
-        </Card>
-      </motion.div>
     </div>
   );
 };

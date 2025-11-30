@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Loader }  from '@/components/common/Loader';
 import { Eye, EyeOff, Mail, Lock, User, Phone } from 'lucide-react';
-import { register, clearError, sendOtp } from '../../redux/slice/auth.slice';
+import { register, clearError } from '../../redux/slice/auth.slice';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -104,9 +104,7 @@ const RegisterPage = () => {
     const { confirmPassword, ...userData } = formData; // Remove confirmPassword before sending
     const result = await dispatch(register(userData));
     if (register.fulfilled.match(result)) {
-      // After successful registration, send OTP
-      await dispatch(sendOtp());
-      navigate('/verify-otp', { state: { method: 'email', contact: formData.email, purpose: 'registration' } });
+      // Registration successful, user is now verified
     }
   };
 
@@ -124,13 +122,28 @@ const RegisterPage = () => {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="mx-auto w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mb-4"
+              className="mx-auto mb-4"
             >
-              <span className="text-white font-bold text-xl">G</span>
+              <img
+                src="/global_bane2-bg.png"
+                alt="Global Bene"
+                className="w-12 h-12 object-contain mx-auto"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.style.display = 'none';
+                  document.getElementById('register-logo-fallback')?.style.removeProperty('display');
+                }}
+                onLoad={(e) => {
+                  document.getElementById('register-logo-fallback')?.style.setProperty('display', 'none', 'important');
+                }}
+              />
+              <div id="register-logo-fallback" style={{ display: 'none' }} className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto">
+                <span className="text-white font-bold text-xl">G</span>
+              </div>
             </motion.div>
-            <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">Sign up</CardTitle>
+            <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">Create Account</CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400">
-              to join Global Bene
+              Join Global Bene today
             </CardDescription>
           </CardHeader>
 

@@ -138,7 +138,8 @@ const registerUser = asyncHandler(async (req, res, next) => {
             email, 
             phone, 
             password,
-            gender: gender || 'not specified'
+            gender: gender || 'not specified',
+            isVerified: true
         })
         await cookieToken(user, res)
         await logActivity(

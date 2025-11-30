@@ -5,6 +5,7 @@ import { store } from './redux/store/store'
 import { checkAuthStatus } from './redux/slice/auth.slice'
 import { ThemeProvider } from './context/ThemeContext'
 import { SocketProvider } from './context/SocketContext'
+import { SidebarProvider } from './context/SidebarContext'
 import './index.css'
 import App from './App.jsx'
 
@@ -29,7 +30,9 @@ createRoot(document.getElementById('root')).render(
     <ThemeProvider>
       <Provider store={store}>
         <SocketProvider>
-          <App />
+          <SidebarProvider>
+            <App />
+          </SidebarProvider>
         </SocketProvider>
       </Provider>
     </ThemeProvider>

@@ -11,7 +11,7 @@ import { Link } from 'react-router-dom';
 const CreateCommunityPage = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useSelector(state => state.auth);
-  const [showModal, setShowModal] = useState(true);
+  const [showModal, setShowModal] = useState(false);
 
   const handleCreateCommunity = (newCommunity) => {
     // Community creation is now handled by Redux in the modal

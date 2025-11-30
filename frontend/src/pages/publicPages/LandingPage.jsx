@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import MainLayout from '@/Layouts/MainLayout';
 import PostCard from '@/components/cards/PostCards';
@@ -14,10 +14,24 @@ import { getAllCommunities } from '@/redux/slice/community.slice';
 const LandingPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { posts, loading: postsLoading, error: postsError, pagination } = useSelector(state => state.post);
   const { communities, loading: communitiesLoading } = useSelector(state => state.community);
   const [sortBy, setSortBy] = useState('hot');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Determine initial sort based on path
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/popular') {
+      setSortBy('trending');
+    } else if (path === '/all') {
+      setSortBy('new');
+    } else {
+      setSortBy('hot');
+    }
+    setCurrentPage(1); // Reset page when path changes
+  }, [location.pathname]);
 
   useEffect(() => {
     // Fetch real posts from API
@@ -113,30 +127,9 @@ const LandingPage = () => {
           </div>
         )}
 
-        {/* Sort Tabs */}
-        <Tabs value={sortBy} onValueChange={handleSortChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="hot" className="flex items-center gap-2">
-              <Flame className="h-4 w-4" />
-              Hot
-            </TabsTrigger>
-            <TabsTrigger value="new" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              New
-            </TabsTrigger>
-            <TabsTrigger value="trending" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Trending
-            </TabsTrigger>
-            <TabsTrigger value="top" className="flex items-center gap-2">
-              <Star className="h-4 w-4" />
-              Top
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value={sortBy} className="mt-6">
-            <div className="space-y-4">
-              {posts && posts.length > 0 ? posts.filter(post => post && post._id).map((post, index) => (
+        {/* Posts Feed */}
+        <div className="space-y-4">
+          {posts && posts.length > 0 ? posts.filter(post => post && post._id).map((post, index) => (
                 <motion.div
                   key={post._id}
                   initial={{ opacity: 0, y: 20 }}
@@ -159,41 +152,39 @@ const LandingPage = () => {
                   </Button>
                 </div>
               )}
-            </div>
 
-            {/* Pagination */}
-            {pagination && pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between mt-8">
-                <Button
-                  variant="outline"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage <= 1}
-                  className="flex items-center gap-2"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    Page {pagination.currentPage} of {pagination.totalPages}
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    ({pagination.totalPosts} posts)
-                  </span>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage >= pagination.totalPages}
-                  className="flex items-center gap-2"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+          {/* Pagination */}
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-8">
+              <Button
+                variant="outline"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage <= 1}
+                className="flex items-center gap-2"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Page {pagination.currentPage} of {pagination.totalPages}
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  ({pagination.totalPosts} posts)
+                </span>
               </div>
-            )}
-          </TabsContent>
-        </Tabs>
+              <Button
+                variant="outline"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= pagination.totalPages}
+                className="flex items-center gap-2"
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </MainLayout>
   );

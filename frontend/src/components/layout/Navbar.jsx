@@ -136,12 +136,28 @@ const Navbar = ({ user, notificationsCount = 0 }) => {
             whileHover={{ scale: 1.05 }}
             className="flex items-center"
           >
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">G</span>
-              </div>
-              <span className="text-xl font-bold text-foreground hidden sm:block">Global Bene</span>
-            </Link>
+              <Link to="/" className="flex items-center gap-2">
+                {/* Primary logo image (placed in `public/global_bene.png`). If image missing, fallback to initial circular G */}
+                <img
+                  src="/global_bane2-bg.png"
+                  alt="Global Bene"
+                  className="w-10 h-10 object-contain"
+                  onError={(e) => {
+                    // Show fallback circle-G when image fails to load
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                    document.getElementById('logo-fallback')?.style.removeProperty('display');
+                  }}
+                  onLoad={(e) => {
+                    // Hide fallback circle-G when image loads successfully
+                    document.getElementById('logo-fallback')?.style.setProperty('display', 'none', 'important');
+                  }}
+                />
+                <div id="logo-fallback" style={{ display: 'none' }} className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-lg">G</span>
+                </div>
+                <span className="text-xl font-bold text-foreground hidden sm:block">Global Bene</span>
+              </Link>
           </motion.div>
 
           {/* Desktop Search Bar */}
@@ -358,22 +374,6 @@ const Navbar = ({ user, notificationsCount = 0 }) => {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/profile')}>
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/saved-posts')}>
-                    <Bookmark className="mr-2 h-4 w-4" />
-                    Saved Posts
-                  </DropdownMenuItem>
-                  {user.role === 'admin' && (
-                    <DropdownMenuItem onClick={() => navigate('/admin/dashboard')}>
-                      <Shield className="mr-2 h-4 w-4" />
-                      Admin Panel
-                    </DropdownMenuItem>
-                  )}
-
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Log out
@@ -493,24 +493,6 @@ const Navbar = ({ user, notificationsCount = 0 }) => {
                       <p className="text-sm text-muted-foreground">u/{user.username}</p>
                     </div>
                   </div>
-                  <Button variant="ghost" onClick={() => { navigate('/profile'); setIsMobileMenuOpen(false); }} className="w-full justify-start">
-                    <User className="h-4 w-4 mr-2" />
-                    Profile
-                  </Button>
-                  <Button variant="ghost" onClick={() => { navigate('/saved-posts'); setIsMobileMenuOpen(false); }} className="w-full justify-start">
-                    <Bookmark className="h-4 w-4 mr-2" />
-                    Saved Posts
-                  </Button>
-                  {user.role === 'admin' && (
-                    <Button variant="ghost" onClick={() => { navigate('/admin/dashboard'); setIsMobileMenuOpen(false); }} className="w-full justify-start">
-                      <Shield className="h-4 w-4 mr-2" />
-                      Admin Panel
-                    </Button>
-                  )}
-                  <Button variant="ghost" onClick={() => { navigate('/settings'); setIsMobileMenuOpen(false); }} className="w-full justify-start">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Settings
-                  </Button>
                   <Button variant="ghost" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50">
                     <LogOut className="h-4 w-4 mr-2" />
                     Log out
