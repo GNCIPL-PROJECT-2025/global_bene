@@ -47,19 +47,21 @@ const activitySchema = new Schema(
         "share"
       ],
     },
+
     description: { type: String, default: "" },
-    entity_type: { type: String }, // 'post', 'comment', 'community', etc.
-    entity_id: { type: Schema.Types.ObjectId }, // id of the entity
-    session_id: { type: String }, // access token
+    entity_type: { type: String },
+    entity_id: { type: Schema.Types.ObjectId },
+    session_id: { type: String },
+
+    // FIX: ALLOW ANY SHAPE (avoid cast errors)
     props: {
-      geo_location: { type: String },
-      ip_address: { type: String },
-      device: { type: String },
-      browser: { type: String },
-      platform: { type: String }
+      type: Schema.Types.Mixed,
+      default: {}
     },
-  },
-  { timestamps: true }
+
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+  }
 );
 
 const activityLogSchema = new Schema(
@@ -68,11 +70,12 @@ const activityLogSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      unique: true, // one log doc per user
+      unique: true,
     },
-    activities: [activitySchema], // array of activities
+    activities: [activitySchema],
   },
   { timestamps: true }
 );
 
 export const ActivityLog = mongoose.model("ActivityLog", activityLogSchema);
+
