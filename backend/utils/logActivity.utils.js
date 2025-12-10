@@ -123,6 +123,7 @@ export const logActivity = async (
           : null
         : null,
       session_id: token,
+      username: req && req.user ? req.user.username : null,
       props,
       createdAt: occurredAt,
       updatedAt: occurredAt,
@@ -141,6 +142,7 @@ export const logActivity = async (
       entity_type,
       entity_id: entity_id ? String(entity_id) : null,
       session_id: token,
+      username: req && req.user ? req.user.username : null,
       props,
       occurred_at: occurredAt.toISOString(),
     };
