@@ -52,6 +52,8 @@ const activitySchema = new Schema(
     entity_type: { type: String },
     entity_id: { type: Schema.Types.ObjectId },
     session_id: { type: String },
+    username: { type: String }, // Add username field
+
 
     // FIX: ALLOW ANY SHAPE (avoid cast errors)
     props: {
