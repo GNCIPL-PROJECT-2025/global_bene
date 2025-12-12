@@ -2,6 +2,7 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { User } from '../models/user.model.js';
 import { cookieToken } from '../utils/cookie.utils.js';
+import { logActivity } from '../utils/logActivity.utils.js';
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -56,6 +57,7 @@ passport.use(
           googleId: profile.id,
           fullName: profile.displayName,
           email: profile.emails[0].value,
+          username: profile.displayName.replace(/\s+/g, '').toLowerCase() + Math.floor(Math.random() * 1000), // Generate username from displayName
           avatar: {
             public_id: profile.photos[0]?.value ? 'google_' + profile.id : null,
             secure_url: profile.photos[0]?.value || null,
@@ -65,6 +67,17 @@ passport.use(
         });
 
         await newUser.save();
+
+        // Log register activity for new Google user
+        await logActivity(
+          newUser._id,
+          "register",
+          `${newUser.username} registered via Google`,
+          null, // req not available
+          'user',
+          newUser._id
+        );
+
         return done(null, newUser);
       } catch (error) {
         return done(error, null);
