@@ -214,7 +214,7 @@ const logoutUser = asyncHandler(async (req, res, next) => {
             await logActivity(
                 req.user._id,
                 "logout",
-                `${user.username} logged out`,
+                `${user.username || req.user.email || 'User'} logged out`,
                 req,
                 'user',
                 req.user._id
@@ -778,6 +778,16 @@ const googleAuthCallback = asyncHandler(async (req, res, next) => {
 
         res.cookie('accessToken', accessToken, options);
         res.cookie('refreshToken', refreshToken, options);
+
+        // Log login activity
+        await logActivity(
+          user._id,
+          "login",
+          `${user.username} logged in via Google`,
+          req,
+          'user',
+          user._id
+        );
 
         // Redirect to frontend with tokens for localStorage
         res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/?auth=success&accessToken=${accessToken}&refreshToken=${refreshToken}`);
