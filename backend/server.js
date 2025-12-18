@@ -13,7 +13,10 @@ const io = new Server(server, {
     cors: {
         origin: process.env.CORS_ORIGIN.split(","),
         credentials: true
-    }
+    },
+    transports: ['websocket', 'polling'], // Support both transports
+    pingTimeout: 60000, // Increase ping timeout for production
+    pingInterval: 25000, // Ping interval
 });
 
 // TODO: Enable Redis adapter for scaling when Redis server is available
