@@ -13,6 +13,7 @@ import {
     getAllPostsForAdmin,
     getAllCommunitiesForAdmin,
     adminDeletePost,
+    adminDeleteCommunity,
     adminAddMemberToCommunity,
     adminRemoveMemberFromCommunity,
     getSpamReports,
@@ -48,6 +49,7 @@ router.route("/post/:id").delete(adminDeletePost)
 
 // Communities management
 router.route("/communities").get(getAllCommunitiesForAdmin)
+router.route("/community/:id").delete(adminDeleteCommunity)
 router.route("/community/add-member").post(adminAddMemberToCommunity)
 router.route("/community/remove-member").post(adminRemoveMemberFromCommunity)
 
