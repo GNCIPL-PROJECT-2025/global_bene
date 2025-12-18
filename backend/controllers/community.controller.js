@@ -12,7 +12,7 @@ export const createCommunity = asyncHandler(async (req, res) => {
     console.log("req.body:", req.body);
     console.log("req.files:", req.files);
     console.log("req.user:", req.user);
-    const { title, description, name, rules } = req.body;
+    const { title, description, name, rules, category } = req.body;
     const creator = req.user._id;
 
     if (!title || !description) {
@@ -73,6 +73,7 @@ const community = await Community.create({
     name: communityName.toLowerCase(),
     title: title.toLowerCase(),
     description,
+    category: category || "General",
     creator_id: {
         _id: creator,
         username: req.user.username || req.user.email?.split('@')[0] || 'User',
@@ -107,8 +108,8 @@ const community = await Community.create({
 // Get all communities
 export const getAllCommunities = asyncHandler(async (req, res) => {
     const communities = await Community.find({})
+        .select('name title description category avatar banner members_count createdAt')
         .populate('members', '_id username email avatar')
-        .select('name title description avatar banner members_count createdAt')
         .sort({ members_count: -1, createdAt: -1 });
 
     res.status(200).json(new ApiResponse(200, communities, "Communities fetched successfully"));
@@ -119,6 +120,7 @@ export const getCommunityById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     const community = await Community.findById(id)
+        .select('name title description category avatar banner members moderators members_count rules is_private createdAt updatedAt')
         .populate('members', '_id username email avatar')
         .populate('moderators', '_id username email avatar');
 
@@ -134,6 +136,7 @@ export const getCommunityByName = asyncHandler(async (req, res) => {
     const { name } = req.params;
 
     const community = await Community.findOne({ name: name.toLowerCase() })
+        .select('name title description category avatar banner members moderators members_count rules is_private createdAt updatedAt')
         .populate('members', '_id username email avatar')
         .populate('moderators', '_id username email avatar');
 
