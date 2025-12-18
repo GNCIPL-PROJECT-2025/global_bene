@@ -709,6 +709,46 @@ const removeFlaggedPost = asyncHandler(async (req, res, next) => {
 });
 
 
+// *Admin Delete Community
+const adminDeleteCommunity = asyncHandler(async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        const community = await Community.findById(id);
+        if (!community) {
+            return next(new ErrorHandler("Community not found", 404));
+        }
+
+        // Get creator id before deletion for updating their count
+        const creatorId = community.creator_id;
+
+        await logActivity(
+            req.user._id,
+            "admin-delete-community",
+            `Admin ${req.user.fullName || req.user.username} deleted community: ${community.title}`,
+            req,
+            'community',
+            id
+        );
+
+        await Community.findByIdAndDelete(id);
+
+        // Decrement num_communities for creator
+        if (creatorId) {
+            await User.findByIdAndUpdate(creatorId, { $inc: { num_communities: -1 } });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Community deleted successfully"
+        });
+    } catch (error) {
+        console.error("Error deleting community:", error);
+        return next(new ErrorHandler("Error deleting community", 500));
+    }
+});
+
+
 export {
     getAllUsers,
     getOneUser,
@@ -720,6 +760,7 @@ export {
     getAllPostsForAdmin,
     getAllCommunitiesForAdmin,
     adminDeletePost,
+    adminDeleteCommunity,
     adminAddMemberToCommunity,
     adminRemoveMemberFromCommunity,
     getSpamReports,
