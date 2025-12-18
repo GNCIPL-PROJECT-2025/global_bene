@@ -24,6 +24,11 @@ const communitySchema = new Schema({
         required: true,
         maxlength: [500, "Description cannot be more than 500 characters"]
     },
+    category: {
+        type: String,
+        default: "General",
+        enum: ["General", "Technology", "Sports", "Entertainment", "Education", "Health", "Business", "Politics", "Science", "Art", "Music", "Gaming", "Food", "Travel", "Fashion", "Other"]
+    },
     // In community.model.js
     creator_id: {
         _id: {
