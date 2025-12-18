@@ -19,7 +19,7 @@ export const searchCommunities = asyncHandler(async (req, res) => {
             { description: { $regex: q.trim(), $options: 'i' } }
         ]
     })
-    .select('name title description avatar members_count createdAt')
+    .select('name title description category avatar members_count createdAt')
     .sort({ members_count: -1, createdAt: -1 })
     .limit(parseInt(limit));
 
@@ -92,7 +92,7 @@ export const searchAll = asyncHandler(async (req, res) => {
                 { description: { $regex: q.trim(), $options: 'i' } }
             ]
         })
-        .select('name title description avatar members_count createdAt')
+        .select('name title description category avatar members_count createdAt')
         .sort({ members_count: -1, createdAt: -1 })
         .limit(parseInt(limit)),
 
