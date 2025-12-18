@@ -255,13 +255,19 @@ export const deleteComment = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const comment = await Comment.findById(id).populate('post_id');
+    const comment = await Comment.findById(id).populate({
+        path: 'post_id',
+        populate: {
+            path: 'community',
+            select: 'moderators'
+        }
+    });
     if (!comment) {
         throw new ApiError(404, "Comment not found");
     }
 
     const isAuthor = comment.author_id.toString() === userId.toString();
-    const isModerator = comment.post_id.community.moderators.includes(userId);
+    const isModerator = comment.post_id?.community?.moderators?.includes(userId) || false;
 
     if (!isAuthor && !isModerator) {
         throw new ApiError(403, "Only author or moderator can delete comment");
