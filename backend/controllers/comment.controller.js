@@ -201,6 +201,11 @@ export const updateComment = asyncHandler(async (req, res) => {
     const { body } = req.body;
     const userId = req.user._id;
 
+    // Validate ObjectId format
+    if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
+        throw new ApiError(400, "Invalid comment ID format");
+    }
+
     const comment = await Comment.findById(id);
     if (!comment) {
         throw new ApiError(404, "Comment not found");
@@ -255,19 +260,33 @@ export const deleteComment = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const comment = await Comment.findById(id).populate({
-        path: 'post_id',
-        populate: {
-            path: 'community_id',
-            select: 'moderators'
-        }
-    });
+    // Validate ObjectId format
+    if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
+        throw new ApiError(400, "Invalid comment ID format");
+    }
+
+    const comment = await Comment.findById(id);
     if (!comment) {
         throw new ApiError(404, "Comment not found");
     }
 
     const isAuthor = comment.author_id.toString() === userId.toString();
-    const isModerator = comment.post_id?.community_id?.moderators?.some(mod => mod.toString() === userId.toString()) || false;
+    
+    let isModerator = false;
+    try {
+        const populatedComment = await Comment.findById(id).populate({
+            path: 'post_id',
+            populate: {
+                path: 'community_id',
+                select: 'moderators'
+            }
+        });
+        isModerator = populatedComment?.post_id?.community_id?.moderators?.some(mod => mod.toString() === userId.toString()) || false;
+    } catch (error) {
+        // If populate fails, assume not moderator
+        console.log('Populate failed in deleteComment:', error.message);
+        isModerator = false;
+    }
 
     if (!isAuthor && !isModerator) {
         throw new ApiError(403, "Only author or moderator can delete comment");
@@ -282,9 +301,8 @@ export const deleteComment = asyncHandler(async (req, res) => {
         id
     );
 
-    // Update counts - comment.post_id is populated so use _id
-    const postId = comment.post_id?._id || comment.post_id;
-    const post = await Post.findById(postId);
+    // Update counts
+    const post = await Post.findById(comment.post_id);
     if (post) {
         post.num_comments -= 1;
         await post.save();
