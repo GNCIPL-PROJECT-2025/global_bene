@@ -258,7 +258,7 @@ export const deleteComment = asyncHandler(async (req, res) => {
     const comment = await Comment.findById(id).populate({
         path: 'post_id',
         populate: {
-            path: 'community',
+            path: 'community_id',
             select: 'moderators'
         }
     });
@@ -267,7 +267,7 @@ export const deleteComment = asyncHandler(async (req, res) => {
     }
 
     const isAuthor = comment.author_id.toString() === userId.toString();
-    const isModerator = comment.post_id?.community?.moderators?.includes(userId) || false;
+    const isModerator = comment.post_id?.community_id?.moderators?.some(mod => mod.toString() === userId.toString()) || false;
 
     if (!isAuthor && !isModerator) {
         throw new ApiError(403, "Only author or moderator can delete comment");
@@ -282,10 +282,13 @@ export const deleteComment = asyncHandler(async (req, res) => {
         id
     );
 
-    // Update counts
-    const post = await Post.findById(comment.post_id);
-    post.num_comments -= 1;
-    await post.save();
+    // Update counts - comment.post_id is populated so use _id
+    const postId = comment.post_id?._id || comment.post_id;
+    const post = await Post.findById(postId);
+    if (post) {
+        post.num_comments -= 1;
+        await post.save();
+    }
 
     if (comment.parent_id) {
         const parentComment = await Comment.findById(comment.parent_id);
