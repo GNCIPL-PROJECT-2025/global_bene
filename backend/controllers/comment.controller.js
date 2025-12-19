@@ -317,7 +317,7 @@ export const deleteComment = asyncHandler(async (req, res) => {
     if (isAuthor) {
         // Author deletes: set status to removed, clear body
         comment.status = 'removed';
-        comment.body = '';
+        comment.body = '[deleted]';
         await comment.save();
         // Decrement num_comments for user
         await User.findByIdAndUpdate(userId, { $inc: { num_comments: -1 } });
