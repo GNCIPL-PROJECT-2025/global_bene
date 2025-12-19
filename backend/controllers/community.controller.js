@@ -10,9 +10,12 @@ import { logActivity } from "../utils/logActivity.utils.js";
 // Create a new community
 export const createCommunity = asyncHandler(async (req, res) => {
     console.log("req.body:", req.body);
+    console.log("req.body.category:", req.body.category);
+    console.log("Category type:", typeof req.body.category);
     console.log("req.files:", req.files);
     console.log("req.user:", req.user);
     const { title, description, name, rules, category } = req.body;
+    console.log("Destructured category:", category);
     const creator = req.user._id;
 
     if (!title || !description) {
