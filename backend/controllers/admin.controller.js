@@ -720,7 +720,8 @@ const adminDeleteCommunity = asyncHandler(async (req, res, next) => {
         }
 
         // Get creator id before deletion for updating their count
-        const creatorId = community.creator_id;
+        // creator_id is an embedded object with _id field, not a direct ObjectId
+        const creatorId = community.creator_id?._id || community.creator_id;
 
         await logActivity(
             req.user._id,
