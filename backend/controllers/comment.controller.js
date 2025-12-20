@@ -274,14 +274,13 @@ export const deleteComment = asyncHandler(async (req, res) => {
     
     let isModerator = false;
     try {
-        const populatedComment = await Comment.findById(id).populate({
-            path: 'post_id',
-            populate: {
-                path: 'community_id',
-                select: 'moderators'
-            }
+        const post = await Post.findById(comment.post_id).populate({
+            path: 'community_id',
+            select: 'moderators'
         });
-        isModerator = populatedComment?.post_id?.community_id?.moderators?.some(mod => mod.toString() === userId.toString()) || false;
+        if (post && post.community_id) {
+            isModerator = post.community_id.moderators?.some(mod => mod.toString() === userId.toString()) || false;
+        }
     } catch (error) {
         // If populate fails, assume not moderator
         console.log('Populate failed in deleteComment:', error.message);
@@ -310,8 +309,10 @@ export const deleteComment = asyncHandler(async (req, res) => {
 
     if (comment.parent_id) {
         const parentComment = await Comment.findById(comment.parent_id);
-        parentComment.replies_count -= 1;
-        await parentComment.save();
+        if (parentComment) {
+            parentComment.replies_count -= 1;
+            await parentComment.save();
+        }
     }
 
     if (isAuthor) {
@@ -321,12 +322,15 @@ export const deleteComment = asyncHandler(async (req, res) => {
         await comment.save();
         // Decrement num_comments for user
         await User.findByIdAndUpdate(userId, { $inc: { num_comments: -1 } });
+        
+        // Populate author info before sending response
+        await comment.populate('author_id', 'username avatar');
+        res.status(200).json(new ApiResponse(200, comment, "Comment deleted successfully"));
     } else {
         // Moderator deletes: delete completely
         await Comment.findByIdAndDelete(id);
+        res.status(200).json(new ApiResponse(200, { commentId: id }, "Comment deleted successfully"));
     }
-
-    res.status(200).json(new ApiResponse(200, { commentId: id }, "Comment deleted successfully"));
 });
 
 // Upvote comment
