@@ -326,7 +326,7 @@ export const deleteComment = asyncHandler(async (req, res) => {
         await Comment.findByIdAndDelete(id);
     }
 
-    res.status(200).json(new ApiResponse(200, null, "Comment deleted successfully"));
+    res.status(200).json(new ApiResponse(200, { commentId: id }, "Comment deleted successfully"));
 });
 
 // Upvote comment
