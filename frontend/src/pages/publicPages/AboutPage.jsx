@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import MainLayout from '@/Layouts/MainLayout';
 import { getAllCommunities } from '@/redux/slice/community.slice';
 import { Loader } from '@/components/common/Loader';
@@ -7,6 +8,7 @@ import { Users, Target, Heart, Globe, ArrowRight } from 'lucide-react';
 
 const AboutPage = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { communities, loading: communitiesLoading } = useSelector(state => state.community);
 
   useEffect(() => {
@@ -147,7 +149,10 @@ const AboutPage = () => {
             share knowledge, find collaborators, or make a difference, Global Bene 
             provides the platform to turn your ideas into action.
           </p>
-          <button className="bg-primary text-primary-foreground px-8 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2">
+          <button
+            onClick={() => navigate('/communities')}
+            className="bg-primary text-primary-foreground px-8 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
+          >
             Join Our Community
             <ArrowRight className="w-4 h-4" />
           </button>
