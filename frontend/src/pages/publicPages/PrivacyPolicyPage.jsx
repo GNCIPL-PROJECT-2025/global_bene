@@ -595,12 +595,7 @@ const PrivacyPolicyPage = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="pt-4">
-                    <Button className="gap-2">
-                      <Mail className="h-4 w-4" />
-                      Contact Privacy Team
-                    </Button>
-                  </div>
+
                 </CardContent>
               </Card>
             </section>
