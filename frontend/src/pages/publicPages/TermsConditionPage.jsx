@@ -488,12 +488,6 @@ const TermsConditionPage = () => {
                       <span><strong>Website:</strong> www.globalbene.com/terms</span>
                     </div>
                   </div>
-                  <div className="pt-4">
-                    <Button className="gap-2">
-                      <Mail className="h-4 w-4" />
-                      Contact Legal Team
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             </section>
