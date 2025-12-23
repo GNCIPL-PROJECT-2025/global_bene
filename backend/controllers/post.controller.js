@@ -546,10 +546,48 @@ export const getSavedPosts = asyncHandler(async (req, res) => {
 export const getRecommendedPosts = asyncHandler(async (req, res) => {
     const userId = req.user._id;
 
-    const recommendedPostIds = await getRecommendations(userId);
+    let recommendedPostIds = await getRecommendations(userId);
+    let source = 'ml_recommendation';
 
+    // Fallback: If external API returns no recommendations, get posts user has interacted with
     if (recommendedPostIds.length === 0) {
-        return res.status(200).json(new ApiResponse(200, [], "No recommendations available"));
+        // Find posts the user has upvoted or downvoted
+        const interactedPosts = await Post.find({
+            $or: [
+                { upvotes: userId },
+                { downvotes: userId }
+            ],
+            status: 'active'
+        }).select('_id community_id').limit(10);
+
+        // Get communities from interacted posts to find similar content
+        const communityIds = [...new Set(interactedPosts.map(p => p.community_id?.toString()).filter(Boolean))];
+
+        if (communityIds.length > 0) {
+            // Find recent popular posts from communities user has interacted with
+            const fallbackPosts = await Post.find({
+                community_id: { $in: communityIds },
+                status: 'active',
+                author_id: { $ne: userId } // Exclude user's own posts
+            })
+            .populate('author_id', 'username avatar')
+            .populate('community_id', 'title members')
+            .sort({ upvotes: -1, createdAt: -1 })
+            .limit(20);
+
+            if (fallbackPosts.length > 0) {
+                return res.status(200).json(new ApiResponse(200, fallbackPosts, "Recommended posts based on your interests"));
+            }
+        }
+
+        // Ultimate fallback: Get trending posts
+        const trendingPosts = await Post.find({ status: 'active' })
+            .populate('author_id', 'username avatar')
+            .populate('community_id', 'title members')
+            .sort({ upvotes: -1, createdAt: -1 })
+            .limit(20);
+
+        return res.status(200).json(new ApiResponse(200, trendingPosts, "Trending posts for you"));
     }
 
     const posts = await Post.find({ _id: { $in: recommendedPostIds }, status: 'active' })
@@ -559,6 +597,17 @@ export const getRecommendedPosts = asyncHandler(async (req, res) => {
     // Sort posts based on the order of recommendedPostIds (API returns ranked order)
     const postMap = new Map(posts.map(post => [post._id.toString(), post]));
     const sortedPosts = recommendedPostIds.map(id => postMap.get(id)).filter(Boolean);
+
+    // If ML recommendations didn't match any posts in DB, use fallback
+    if (sortedPosts.length === 0) {
+        const trendingPosts = await Post.find({ status: 'active' })
+            .populate('author_id', 'username avatar')
+            .populate('community_id', 'title members')
+            .sort({ upvotes: -1, createdAt: -1 })
+            .limit(20);
+
+        return res.status(200).json(new ApiResponse(200, trendingPosts, "Trending posts for you"));
+    }
 
     res.status(200).json(new ApiResponse(200, sortedPosts, "Recommended posts fetched successfully"));
 });
